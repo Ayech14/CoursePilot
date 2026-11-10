@@ -39,8 +39,6 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/schedule",
     label: "Schedule",
     icon: CalendarDays,
-    plannedMilestone: 3,
-    plannedDescription: "Generate a study schedule, then preview and adjust it.",
   },
   {
     to: "/analytics",

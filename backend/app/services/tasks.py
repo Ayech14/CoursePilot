@@ -16,7 +16,7 @@ from app.models import Course, Task, User
 from app.models.enums import TaskStatus, TaskType
 from app.schemas.common import Page
 from app.schemas.task import TaskCreate, TaskProgress, TaskRead, TaskUpdate
-from app.services.common import get_owned
+from app.services.common import get_owned, mark_schedule_inputs_changed
 
 _EXAM_TYPES = frozenset({TaskType.MIDTERM, TaskType.FINAL_EXAM, TaskType.QUIZ})
 
@@ -93,6 +93,7 @@ def create_task(db: Session, user: User, data: TaskCreate) -> Task:
     _check_exam_has_date(task)
 
     db.add(task)
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return task
 
@@ -111,6 +112,7 @@ def update_task(db: Session, user: User, task_id: uuid.UUID, changes: TaskUpdate
     _check_exam_has_date(task)
     _apply_state_change(task, status, remaining)
 
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return task
 
@@ -170,10 +172,12 @@ def record_progress(db: Session, user: User, task_id: uuid.UUID, progress: TaskP
             )
         task.status = TaskStatus.IN_PROGRESS
 
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return task
 
 
 def delete_task(db: Session, user: User, task_id: uuid.UUID) -> None:
     db.delete(get_owned(db, Task, task_id, user.id))
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()

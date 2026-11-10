@@ -23,7 +23,7 @@ Course, task, availability and preference APIs and screens. B1–B3, C1–C3, D1
 **Done when:** every endpoint has validation and cross-user isolation tests, and a user can enter a
 real semester through the UI.
 
-### M3: Scheduling Engine — Not started
+### M3: Scheduling Engine — Done
 Timeline, DST handling, feasibility analysis, pacing, guarded greedy, explanations, adapter service,
 preview and apply, list view. E1–E5.
 **Done when:** every invariant in `SCHEDULING_ENGINE.md` §10 passes on hand-written and generated
@@ -80,12 +80,30 @@ Only after M6.
 | Removing the ownership check as a deliberate bug | 11 isolation tests failed, as they should |
 | Manual browser journey on the real stack, as a user in `Asia/Tokyo` | Course, exam with correct UTC deadline, progress logging, course totals, overlap error, weekly hours and commitment saved after reload |
 
+### M3 verification record (2026-11-10)
+
+| Check | Result |
+|-------|--------|
+| Backend tests against real PostgreSQL 17 | 1885 passed |
+| Engine invariants on 500 generated scenarios, 8 time zones, daylight saving changes | Passed |
+| Determinism, including shuffled input order | Passed on all 500 |
+| "If plain EDF meets every deadline, so does the plan" | Passed on all 500; a guard test confirms both outcomes occur |
+| Benchmark | 60 tasks: 0.26 s over 28 days, 0.48 s over 120 days |
+| Deliberately introduced bugs (9 in the engine, 5 in preview and apply) | Each caused failures |
+| Frontend tests (stubbed server), lint, types, build | 91 passed, clean |
+| Manual browser journey on the real stack | Six tasks including impossible and overdue ones; preview, apply, reload, regenerate |
+
+The browser journey found two bugs that automated tests had missed, both now fixed and covered: a
+reserved logging field crashed previews, because tests ran below `INFO` level, and one impossible task
+removed every other task's early-finish margin.
+
 **Known gaps carried forward:**
 - Login rate limiting is not implemented (M6).
 - Docker images are for development. Production images are in M6.
-- The Schedule and Analytics pages are labeled "Not built yet". The dashboard has no data widgets until M5.
+- The Analytics page is labeled "Not built yet". The dashboard has no data widgets until M5.
+- The schedule is a list, not a calendar, and sessions cannot be moved by hand yet (M4 and M5).
 - There is no Playwright suite yet (M6). The browser journeys above were run by hand.
-- Task and availability edits do not yet flag the schedule as stale (M4).
-- The scheduler package is an empty, boundary-tested placeholder (M3).
-- The schedule, timer, proposal and notification tables exist and their constraints are tested, but
-  no API uses them yet.
+- Edits invalidate an open preview, but nothing yet suggests a new plan automatically (M4).
+- Time already studied today does not count toward the daily limit until the timer exists (M5).
+- Scoring weights are reasoned starting values and have not been tuned against data (M7).
+- The timer and notification tables exist and their constraints are tested, but no API uses them yet.

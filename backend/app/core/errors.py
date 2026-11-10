@@ -80,6 +80,18 @@ class TaskCompletedError(AppError):
     message = "This task is already completed. Reopen it to record more progress."
 
 
+class ProposalClosedError(AppError):
+    status_code = 409
+    code = "proposal_closed"
+    message = "This preview has already been applied or dismissed."
+
+
+class ProposalStaleError(AppError):
+    status_code = 409
+    code = "proposal_stale"
+    message = "Your schedule or tasks changed after this preview. Please create a new preview."
+
+
 class InvalidFieldsError(AppError):
     """A rule that needs database state, reported in the same shape as schema validation."""
 

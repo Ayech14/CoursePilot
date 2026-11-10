@@ -1,7 +1,7 @@
 # CoursePilot — Scheduling Engine Design
 
-> **Status: design only.** The engine is implemented in Milestones 3 and 4. Details may be
-> refined during implementation, and this document will be updated when they are.
+> **Status:** sections 1 to 7 and 10 are implemented (Milestone 3). Sections 8 and 9, repair-based
+> rescheduling and manual control, are the design for Milestone 4.
 
 ## 1. Interface
 
@@ -72,9 +72,10 @@ of 50 and a minimum of 25 becomes 50 + 30 + 25, rather than 50 + 50 + 5.
 ### Pacing
 Without pacing, a greedy planner fills every early slot and the student has a brutal first week. Each
 task instead has a linear pace, its remaining minutes divided by the study-available days before its
-deadline. The sum of paces is that day's **soft target**. Once a day meets its target, "leave this
-slot empty" becomes a legal candidate. Pacing never overrides the guard, so a tight deadline will
-still fill the day.
+deadline. Their running total gives a **cumulative soft target** for each day. Once placed work reaches
+that day's target, "leave this slot empty" becomes a legal choice. A cumulative target stops rounding
+to whole sessions from drifting. Pacing never overrides the guard, so a tight deadline still fills the
+day, and a slot is not left empty while at-risk work could use it.
 
 ### Score
 For a task `t` at slot `s`, with each factor normalized to 0–1:
@@ -92,7 +93,8 @@ score = 0.50 · urgency + 0.25 · priority + 0.15 · course_balance + 0.10 · va
 
 Urgency uses *available study capacity*, not calendar days. Five days away with no free time is
 genuinely more urgent than five days away with free evenings. Ties break on deadline, then task ID.
-The weights are starting values, to be tuned in M3 against measurable plan-quality metrics.
+**The weights are reasoned starting values and have not been tuned against data.** Tuning them needs
+plan-quality metrics across many workloads, which belongs with the M7 comparison.
 
 ## 6. The feasibility guard
 
@@ -110,29 +112,38 @@ else:
     place the EDF choice
 ```
 
-**The guarantee:** the plan never has more shortfall than plain EDF would have on the same slots.
-Every step either takes the EDF choice or is proven by simulation to be no worse. If EDF can meet
-every deadline, the guarded plan does as well.
+**The guarantee:** if plain EDF can meet every deadline on the available slots, the plan does too.
+Every step either takes the EDF choice or is proven by simulation to be no worse. In an overloaded
+week, every task not reported as at risk still meets its deadline.
 
 **The limit of that guarantee.** On one machine with freely divisible work, EDF is provably optimal
 (Jackson's and Horn's results). Here, slots are discrete and a short final chunk can waste the end of
 a slot, so the problem has a bin-packing flavor, and EDF is an excellent heuristic rather than an
-exact optimum. The claim is therefore "never worse than EDF on the available slots". It does not
-claim to find a plan whenever one exists. Quantifying that gap is the purpose of the M7 comparison.
+exact optimum. The claim is therefore "as good as EDF on the available slots". It does not claim to
+find a plan whenever one exists. Quantifying that gap is the purpose of the M7 comparison.
 
-**Cost.** One simulation is about `O(S log T)` for `S` slots and `T` tasks. With a candidate cap `K`,
-a full plan costs about `O(K · S² log T)`. A four-week horizon has a few hundred slots, and most steps
-accept the first candidate. A benchmark test in M3 will keep this honest.
+**Cost.** One simulation is about `O(S log T)` for `S` slots and `T` tasks, and stops as soon as all
+protected work is placed. With a candidate cap `K`, a full plan costs about `O(K · S² log T)` in the
+worst case. Measured on an Apple Silicon laptop, 60 tasks took 0.26 s over a 28-day horizon and 0.48 s
+over 120 days. `test_planning_time_stays_interactive` keeps this honest.
 
 ### Deadline buffer
 Planning first uses `deadline − buffer` (12 hours by default), so work does not finish minutes before
-it is due. Any task that cannot meet its buffered deadline falls back to the real one.
+it is due. A task that cannot meet its buffered deadline falls back to the real one, and tasks that
+can keep their margin. Tasks that cannot be saved at all are identified first, so that one hopeless
+task cannot cost every other task its margin.
 
 ### Overload
 If work cannot fit, a Moore–Hodgson style pass runs. While EDF misses a deadline, the lowest-priority
 task among those due by that deadline is marked **at risk** and removed from the guard. It still
 receives any leftover slots. This stops one impossible task from dragging others past their
 deadlines. The result reports each at-risk task and its shortfall in minutes.
+
+A task whose deadline has already passed is not scheduled, because no session could satisfy it. It is
+reported as overdue, and setting a new deadline brings it back into the plan.
+
+Undated work and work due after the horizon can never be late within the plan. Whatever is not reached
+is reported separately and is not treated as a problem.
 
 ## 7. Explanations
 
@@ -212,8 +223,11 @@ Checked on hand-written scenarios and on randomly generated ones:
 6. A task never receives more minutes than it has remaining.
 7. Locked sessions are identical before and after any plan.
 8. Identical input gives byte-identical output.
-9. The plan's shortfall is never greater than plain EDF's.
+9. If plain EDF on the same slots meets every deadline, the plan does too.
 10. All of the above across DST transitions in several time zones.
+
+The checker in `tests/unit/scheduler/support.py` is written independently of the engine and works
+from wall-clock rules, so a time-handling bug in the engine cannot hide by agreeing with itself.
 
 ## 11. Should constraint optimization come later?
 

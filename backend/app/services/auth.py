@@ -14,6 +14,7 @@ from app.core.config import Settings
 from app.core.errors import EmailTakenError, InvalidCredentialsError, InvalidRefreshTokenError
 from app.models import RefreshToken, StudyPreferences, User
 from app.schemas.auth import RegisterRequest, UserUpdate
+from app.services.common import mark_schedule_inputs_changed
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,8 @@ def logout(db: Session, raw_token: str | None) -> None:
 def update_profile(db: Session, user: User, changes: UserUpdate) -> User:
     for field, value in changes.model_dump(exclude_unset=True, exclude_none=True).items():
         setattr(user, field, value)
+    if changes.timezone is not None:
+        mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return user
 

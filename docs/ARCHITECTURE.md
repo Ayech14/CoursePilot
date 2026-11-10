@@ -63,7 +63,8 @@ A preview is saved as a `schedule_proposal` with its list of changes. "Apply" th
 what the user saw, rather than recomputing something that might differ. Proposals live in their
 own tables, so previews never collide with the real schedule under the exclusion constraint.
 
-A per-user `schedule_version` is captured in each proposal. If the schedule changed since the
+A per-user `schedule_version` is captured in each proposal. Any change to the schedule or to what
+a plan depends on (tasks, availability, preferences, time zone) bumps it. If it moved since the
 preview, applying returns `409` and asks for a new preview. This is optimistic concurrency.
 
 ### 3.4 Authentication: short-lived JWT plus rotating refresh cookie
@@ -140,7 +141,7 @@ CoursePilot/
 │   │   ├── models/              # SQLAlchemy models
 │   │   ├── schemas/             # Pydantic contracts
 │   │   └── services/            # Use cases
-│   ├── scheduler/               # Pure engine (implemented in M3)
+│   ├── scheduler/               # Pure scheduling engine
 │   └── tests/{unit,integration}/
 ├── frontend/src/
 │   ├── components/{layout,ui}/  # Shell and design-system primitives
@@ -165,8 +166,9 @@ All routes are under `/api/v1`. Interactive docs are served at `/docs`.
 | Tasks | `GET, POST /tasks` (filters and paging), `GET, PATCH, DELETE /tasks/{id}`, `POST /tasks/{id}/progress` | M2 |
 | Availability | `GET, PUT /availability/windows` (replaces the week), CRUD `/availability/recurring-blocks`, `/availability/one-off-blocks` | M2 |
 | Preferences | `GET, PUT /preferences` | M2 |
-| Schedule | `POST /schedule/preview`, `GET /schedule/proposals/{id}`, `POST …/apply`, `POST …/reject` | M3–M4 |
-| Sessions | `GET /sessions?from&to`, `POST /sessions`, `PATCH /sessions/{id}`, `POST …/{lock,unlock}`, `POST …/check-placement` | M3–M4 |
+| Schedule | `POST /schedule/preview`, `GET /schedule/proposals/{current,{id}}`, `POST …/{id}/apply`, `POST …/{id}/reject` | M3 |
+| Sessions | `GET /sessions?start&end` | M3 |
+| Manual control | `PATCH /sessions/{id}`, `POST /sessions`, `POST …/{lock,unlock}`, `POST …/check-placement` | M4 |
 | Session timer | `POST /sessions/{id}/{start,pause,resume,finish}` | M5 |
 | Dashboard, analytics | `GET /dashboard`, `GET /analytics/*` | M5 |
 | Notifications | `GET /notifications`, `POST /notifications/{id}/read` | M6 |

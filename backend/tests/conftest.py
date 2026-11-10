@@ -25,7 +25,8 @@ os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["JWT_SECRET"] = "test-secret-that-is-at-least-32-characters-long"
 os.environ["COOKIE_SECURE"] = "false"
 os.environ["CORS_ORIGINS"] = "[]"
-os.environ["LOG_LEVEL"] = "WARNING"
+# INFO, so that every log statement actually runs. A bad one can crash a request.
+os.environ["LOG_LEVEL"] = "INFO"
 
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402

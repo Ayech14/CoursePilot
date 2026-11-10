@@ -10,6 +10,7 @@ import { CourseDetailPage } from "./features/courses/CourseDetailPage";
 import { CoursesPage } from "./features/courses/CoursesPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { PlannedPage } from "./features/placeholder/PlannedPage";
+import { SchedulePage } from "./features/schedule/SchedulePage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { TasksPage } from "./features/tasks/TasksPage";
 
@@ -39,6 +40,7 @@ export function App() {
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/courses/:courseId" element={<CourseDetailPage />} />
           <Route path="/tasks" element={<TasksPage />} />
+          <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/availability" element={<AvailabilityPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {NAV_ITEMS.filter((item) => item.plannedMilestone).map((item) => (

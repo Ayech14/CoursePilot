@@ -20,7 +20,7 @@ from app.schemas.availability import (
     RecurringBlockWrite,
     WeeklyTime,
 )
-from app.services.common import get_owned
+from app.services.common import get_owned, mark_schedule_inputs_changed
 
 
 def list_windows(db: Session, user: User) -> list[AvailabilityWindow]:
@@ -50,6 +50,7 @@ def replace_windows(db: Session, user: User, windows: list[WeeklyTime]) -> list[
     _check_no_overlaps(windows)
     db.execute(delete(AvailabilityWindow).where(AvailabilityWindow.user_id == user.id))
     db.add_all(AvailabilityWindow(user_id=user.id, **window.model_dump()) for window in windows)
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return list_windows(db, user)
 
@@ -67,6 +68,7 @@ def list_recurring_blocks(db: Session, user: User) -> list[RecurringBlock]:
 def create_recurring_block(db: Session, user: User, data: RecurringBlockWrite) -> RecurringBlock:
     block = RecurringBlock(user_id=user.id, **data.model_dump())
     db.add(block)
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return block
 
@@ -77,12 +79,14 @@ def update_recurring_block(
     block = get_owned(db, RecurringBlock, block_id, user.id)
     for field, value in data.model_dump().items():
         setattr(block, field, value)
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return block
 
 
 def delete_recurring_block(db: Session, user: User, block_id: uuid.UUID) -> None:
     db.delete(get_owned(db, RecurringBlock, block_id, user.id))
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
 
 
@@ -100,6 +104,7 @@ def list_one_off_blocks(
 def create_one_off_block(db: Session, user: User, data: OneOffBlockWrite) -> OneOffBlock:
     block = OneOffBlock(user_id=user.id, **data.model_dump())
     db.add(block)
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return block
 
@@ -110,12 +115,14 @@ def update_one_off_block(
     block = get_owned(db, OneOffBlock, block_id, user.id)
     for field, value in data.model_dump().items():
         setattr(block, field, value)
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return block
 
 
 def delete_one_off_block(db: Session, user: User, block_id: uuid.UUID) -> None:
     db.delete(get_owned(db, OneOffBlock, block_id, user.id))
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
 
 
@@ -130,5 +137,6 @@ def update_preferences(db: Session, user: User, data: PreferencesWrite) -> Study
     preferences = get_preferences(db, user)
     for field, value in data.model_dump().items():
         setattr(preferences, field, value)
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return preferences

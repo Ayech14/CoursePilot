@@ -17,7 +17,7 @@ from app.schemas.course import (
     CourseUpdate,
 )
 from app.schemas.task import TaskRead
-from app.services.common import get_owned
+from app.services.common import get_owned, mark_schedule_inputs_changed
 
 _UPCOMING_LIMIT = 10
 
@@ -98,6 +98,8 @@ def update_course(
     values = changes.model_dump(exclude_unset=True)
 
     archived = values.pop("archived", None)
+    if archived is not None:
+        mark_schedule_inputs_changed(db, user.id)
     if archived is False:
         course.archived_at = None
     elif archived and course.archived_at is None:
@@ -112,4 +114,5 @@ def update_course(
 def delete_course(db: Session, user: User, course_id: uuid.UUID) -> None:
     """Delete a course. The database cascades to its tasks and their sessions."""
     db.delete(get_owned(db, Course, course_id, user.id))
+    mark_schedule_inputs_changed(db, user.id)
     db.commit()

@@ -140,6 +140,8 @@ it rises as later milestones build on it.
 | 7 | Can a manual move break soft rules? | Yes, with a warning: outside availability, over the daily limit, past the deadline. Overlap is always refused. | The student knows their life better than the rules do. Overlap is physically impossible. |
 | 8 | Accept proposals whole or per change? | Both. Rejecting a single change is validated again, since it can cause a conflict. | J7 says "accept or reject proposed schedule changes". |
 | 9 | Password reset and email verification? | Out of scope for v1. | Both need an email provider, and core features must not depend on external services. |
+| 10c | Are overdue tasks scheduled? | No. They are reported as overdue until given a new deadline. | No session could meet a deadline that has passed, and silently treating it as "as soon as possible" would crowd out work that can still be on time. |
+| 10d | Are tasks in archived courses scheduled? | No. | Archiving means the course is over. |
 | 10a | Does logging the full estimate finish a task? | No. It keeps at least 15 minutes remaining until the student marks it finished or sets remaining effort to zero. | Time spent is not proof the work is done, and a task that runs long is an expected case. |
 | 10b | Can tasks be added to an archived course? | No. Existing tasks keep their course. | Archiving means the course is over. |
 | 10 | What if the work cannot fit? | Plan as much as possible and report which tasks are at risk and by how many minutes. | An honest "this will not fit" is the most useful output in an overloaded week. |

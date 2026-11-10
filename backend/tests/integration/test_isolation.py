@@ -50,6 +50,9 @@ ID_ROUTES: dict[tuple[str, str], dict[str, Any] | None] = {
     ("DELETE", "/availability/recurring-blocks/{block_id}"): None,
     ("PUT", "/availability/one-off-blocks/{block_id}"): _ONE_OFF_BODY,
     ("DELETE", "/availability/one-off-blocks/{block_id}"): None,
+    ("GET", "/schedule/proposals/{proposal_id}"): None,
+    ("POST", "/schedule/proposals/{proposal_id}/apply"): None,
+    ("POST", "/schedule/proposals/{proposal_id}/reject"): None,
 }
 
 
@@ -87,7 +90,9 @@ def _seed(client: TestClient, owner: Headers) -> dict[str, tuple[str, str]]:
     one_off = client.post(
         f"{API}/availability/one-off-blocks", json=_ONE_OFF_BODY, headers=owner
     ).json()["id"]
+    proposal = client.post(f"{API}/schedule/preview", headers=owner).json()["id"]
     return {
+        "proposal_id": (proposal, f"{API}/schedule/proposals/{proposal}"),
         "course_id": (course, f"{API}/courses/{course}"),
         "task_id": (task, f"{API}/tasks/{task}"),
         "/recurring-blocks": (recurring, f"{API}/availability/recurring-blocks"),

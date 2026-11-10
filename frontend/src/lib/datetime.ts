@@ -26,6 +26,35 @@ export function formatDateTime(iso: string, zone: string): string {
   return value.toFormat(sameYear ? "ccc, LLL d, h:mm a" : "ccc, LLL d yyyy, h:mm a");
 }
 
+export function formatDayHeading(iso: string, zone: string): string {
+  return DateTime.fromISO(iso, { zone }).toFormat("cccc, LLLL d");
+}
+
+export function formatTime(iso: string, zone: string): string {
+  return DateTime.fromISO(iso, { zone }).toFormat("h:mm a");
+}
+
+export function minutesBetween(startIso: string, endIso: string): number {
+  return Math.round(DateTime.fromISO(endIso).diff(DateTime.fromISO(startIso), "minutes").minutes);
+}
+
+/** Group items under the local date they fall on, keeping their order. */
+export function groupByLocalDay<T>(
+  items: T[],
+  instantOf: (item: T) => string,
+  zone: string,
+): { heading: string; items: T[] }[] {
+  const groups = new Map<string, { heading: string; items: T[] }>();
+  for (const item of items) {
+    const iso = instantOf(item);
+    const key = DateTime.fromISO(iso, { zone }).toISODate()!;
+    const group = groups.get(key) ?? { heading: formatDayHeading(iso, zone), items: [] };
+    group.items.push(item);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
 export function isPast(iso: string): boolean {
   return DateTime.fromISO(iso) < DateTime.now();
 }

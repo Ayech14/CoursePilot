@@ -3,9 +3,10 @@
 An academic planning platform that turns courses, deadlines and weekly availability into a realistic
 study schedule, and adapts that schedule when plans change.
 
-> **Status: Milestone 2 of 6 complete.** Students can create accounts and enter courses, assignments,
-> exams, progress and weekly availability. The scheduling engine is not built yet. See
-> [the roadmap](docs/DEVELOPMENT_ROADMAP.md) for exactly what is done and verified.
+> **Status: Milestone 3 of 6 complete.** Students can enter their semester, generate a deterministic
+> study schedule with an explanation for each session, preview it and apply it. Rescheduling, manual
+> edits, the calendar and analytics are not built yet. See [the roadmap](docs/DEVELOPMENT_ROADMAP.md)
+> for exactly what is done and verified.
 
 **Stack:** React, TypeScript, Vite, Tailwind CSS · FastAPI, Pydantic, SQLAlchemy · PostgreSQL, Alembic ·
 Docker Compose, GitHub Actions

@@ -51,9 +51,9 @@ describe("routing", () => {
 
   it("labels unbuilt pages as not built", async () => {
     stubFetch(() => jsonResponse(200, session()));
-    renderApp("/schedule");
+    renderApp("/analytics");
     expect(await screen.findByText("Not built yet")).toBeInTheDocument();
-    expect(screen.getByText("Planned for Milestone 3")).toBeInTheDocument();
+    expect(screen.getByText("Planned for Milestone 5")).toBeInTheDocument();
   });
 
   it("shows a not found page for unknown paths", async () => {

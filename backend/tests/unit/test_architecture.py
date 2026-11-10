@@ -5,7 +5,20 @@ from pathlib import Path
 
 import scheduler
 
-FORBIDDEN = {"alembic", "app", "fastapi", "psycopg", "pydantic", "sqlalchemy", "starlette"}
+FORBIDDEN = {
+    "alembic",
+    "app",
+    "fastapi",
+    "psycopg",
+    "pydantic",
+    "random",  # Plans must be reproducible.
+    "secrets",
+    "sqlalchemy",
+    "starlette",
+    "time",
+}
+# Reading the clock would make a plan depend on when it ran. `now` is passed in instead.
+CLOCK_CALLS = {"now", "utcnow", "today"}
 
 
 def forbidden_imports(source: str) -> set[str]:
@@ -32,5 +45,29 @@ def test_scheduler_has_no_framework_imports() -> None:
         str(path): imports
         for path in package_dir.rglob("*.py")
         if (imports := forbidden_imports(path.read_text()))
+    }
+    assert violations == {}
+
+
+def clock_calls(source: str) -> set[str]:
+    return {
+        node.func.attr
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in CLOCK_CALLS
+    }
+
+
+def test_clock_detector_catches_violations() -> None:
+    assert clock_calls("from datetime import datetime\nx = datetime.now()\n") == {"now"}
+
+
+def test_scheduler_never_reads_the_clock() -> None:
+    package_dir = Path(scheduler.__file__).parent
+    violations = {
+        str(path): calls
+        for path in package_dir.rglob("*.py")
+        if (calls := clock_calls(path.read_text()))
     }
     assert violations == {}
