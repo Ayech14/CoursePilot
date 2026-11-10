@@ -1,0 +1,61 @@
+# Local development stack: `docker compose up --build`
+# Default credentials here are for local use only. Production settings arrive in Milestone 6.
+
+x-backend-env: &backend-env
+  ENVIRONMENT: local
+  DATABASE_URL: postgresql+psycopg://coursepilot:coursepilot@db:5432/coursepilot
+  JWT_SECRET: ${JWT_SECRET:-dev-only-secret-not-for-any-real-deployment}
+  # Local development runs over plain HTTP, where a Secure cookie would not be sent.
+  COOKIE_SECURE: "false"
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: coursepilot
+      POSTGRES_PASSWORD: coursepilot
+      POSTGRES_DB: coursepilot
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coursepilot -d coursepilot"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment: *backend-env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: ./backend
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--no-access-log"]
+    environment: *backend-env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build: ./frontend
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  postgres-data:

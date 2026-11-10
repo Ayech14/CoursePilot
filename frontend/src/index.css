@@ -1,0 +1,31 @@
+@import "@fontsource-variable/inter";
+@import "tailwindcss";
+
+/* Design tokens. Components use these names, so the palette can change in one place. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #12161d;
+  --color-surface: #1a1f28;
+  --color-raised: #232935;
+  --color-line: #2f3644;
+  --color-ink: #eceff4;
+  --color-ink-muted: #a3acbb;
+  --color-ink-subtle: #828c9c;
+  --color-brand: #45bfae;
+  --color-brand-hover: #5dcdbd;
+  --color-brand-ink: #06231f;
+  --color-brand-soft: #173a37;
+  --color-danger: #f28b82;
+  --color-danger-soft: #3b2224;
+}
+
+@layer base {
+  html {
+    @apply bg-canvas text-ink antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand;
+  }
+}

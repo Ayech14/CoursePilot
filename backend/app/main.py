@@ -1,0 +1,40 @@
+"""Application factory."""
+
+from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api import health
+from app.api.v1 import auth, users
+from app.core.config import get_settings
+from app.core.errors import register_error_handlers
+from app.core.logging import configure_logging
+from app.core.middleware import RequestContextMiddleware
+
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+    configure_logging(settings.log_level)
+
+    app = FastAPI(title="CoursePilot API", version="0.1.0")
+    register_error_handlers(app)
+
+    if settings.cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    # Added last so it is outermost and sees every request and every failure.
+    app.add_middleware(RequestContextMiddleware)
+
+    api_v1 = APIRouter(prefix="/api/v1")
+    api_v1.include_router(auth.router)
+    api_v1.include_router(users.router)
+    app.include_router(api_v1)
+    app.include_router(health.router)
+    return app
+
+
+app = create_app()

@@ -1,0 +1,90 @@
+"""Health checks, the error format and request correlation."""
+
+import json
+import logging
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import create_app
+
+
+def test_liveness(client: TestClient) -> None:
+    assert client.get("/health").json() == {"status": "ok"}
+
+
+def test_readiness_checks_the_database(client: TestClient) -> None:
+    assert client.get("/health/ready").json() == {"status": "ready"}
+
+
+def test_openapi_documents_auth_routes(client: TestClient) -> None:
+    paths = client.get("/openapi.json").json()["paths"]
+    assert "/api/v1/auth/login" in paths
+    assert "/api/v1/users/me" in paths
+
+
+def test_unknown_route_uses_standard_error_shape(client: TestClient) -> None:
+    response = client.get("/api/v1/nope")
+    assert response.status_code == 404
+    error = response.json()["error"]
+    assert error["code"] == "not_found"
+    assert error["request_id"] == response.headers["x-request-id"]
+
+
+def test_wrong_method_uses_standard_error_shape(client: TestClient) -> None:
+    response = client.get("/api/v1/auth/login")
+    assert response.status_code == 405
+    assert response.json()["error"]["code"] == "method_not_allowed"
+
+
+def test_safe_request_id_is_preserved(client: TestClient) -> None:
+    response = client.get("/health", headers={"X-Request-ID": "client-supplied-id-1"})
+    assert response.headers["x-request-id"] == "client-supplied-id-1"
+
+
+def test_unsafe_request_id_is_replaced(client: TestClient) -> None:
+    response = client.get("/health", headers={"X-Request-ID": 'bad" id\t{}'})
+    assert response.headers["x-request-id"] != 'bad" id\t{}'
+
+
+def log_lines(capsys: pytest.CaptureFixture[str]) -> list[dict[str, Any]]:
+    """Read the JSON lines the application actually wrote to stdout."""
+    return [json.loads(line) for line in capsys.readouterr().out.splitlines() if line]
+
+
+def test_unhandled_exception_is_generic_and_logged(
+    caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture[str]
+) -> None:
+    app = create_app()
+
+    @app.get("/boom")
+    def boom() -> None:
+        raise RuntimeError("secret internal detail")
+
+    client = TestClient(app, raise_server_exceptions=False)
+    with caplog.at_level(logging.ERROR, logger="coursepilot.access"):
+        response = client.get("/boom")
+
+    assert response.status_code == 500
+    assert "secret internal detail" not in response.text
+    error = response.json()["error"]
+    assert error["code"] == "internal_error"
+    assert error["request_id"] == response.headers["x-request-id"]
+
+    entry = next(e for e in log_lines(capsys) if e["message"] == "unhandled_exception")
+    assert "secret internal detail" in entry["exception"]
+    assert entry["request_id"] == error["request_id"]
+
+
+def test_access_log_omits_query_string(
+    caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture[str]
+) -> None:
+    client = TestClient(create_app())
+    with caplog.at_level(logging.INFO, logger="coursepilot.access"):
+        client.get("/health?token=private-value")
+
+    entry = next(e for e in log_lines(capsys) if e["message"] == "request")
+    assert entry["path"] == "/health"
+    assert entry["status"] == 200
+    assert "private-value" not in json.dumps(entry)
