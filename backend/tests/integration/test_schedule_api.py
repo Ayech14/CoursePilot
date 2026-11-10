@@ -38,8 +38,8 @@ def set_hours(
     assert response.status_code == 200
 
 
-def preview(client: TestClient, headers: Headers) -> dict[str, Any]:
-    response = client.post(PREVIEW, headers=headers)
+def preview(client: TestClient, headers: Headers, mode: str = "repair") -> dict[str, Any]:
+    response = client.post(PREVIEW, json={"mode": mode}, headers=headers)
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -237,7 +237,7 @@ def test_apply_creates_exactly_what_was_previewed(client: TestClient) -> None:
 
     response = apply(client, headers, proposal)
 
-    assert response.json() == {"created": 2, "removed": 0}
+    assert response.json()["created"] == 2
     listed = sessions(client, headers)
     assert [s["start_at"] for s in listed] == [c["after_start_at"] for c in proposal["changes"]]
     assert all(s["origin"] == "auto" and s["status"] == "planned" for s in listed)
@@ -298,7 +298,7 @@ def test_preview_goes_stale_when_inputs_change(
 
 def test_regenerating_an_unchanged_plan_changes_nothing(client: TestClient) -> None:
     headers, _ = scheduled_user(client, estimated_minutes=100)
-    proposal = preview(client, headers)
+    proposal = preview(client, headers, "regenerate")
     assert proposal["trigger"] == "regenerate"
     assert proposal["changes"] == []
     assert proposal["unchanged_sessions"] == 2
@@ -311,7 +311,7 @@ def test_finishing_a_task_removes_its_sessions(client: TestClient) -> None:
     proposal = preview(client, headers)
 
     assert [c["action"] for c in proposal["changes"]] == ["remove", "remove"]
-    assert apply(client, headers, proposal).json() == {"created": 0, "removed": 2}
+    assert apply(client, headers, proposal).json()["removed"] == 2
     assert sessions(client, headers) == []
 
 
@@ -328,7 +328,7 @@ def test_a_new_plan_can_reuse_the_time_of_removed_sessions(client: TestClient, d
     new_task(client, headers, title="Urgent", deadline_at="2026-02-02T17:00:00Z", priority=4)
     client.patch(f"{API}/tasks/{first['id']}", json={"priority": 1}, headers=headers)
 
-    response = apply(client, headers, preview(client, headers))
+    response = apply(client, headers, preview(client, headers, "regenerate"))
 
     assert response.status_code == 200
     active = [s for s in stored_sessions(db) if s.status == SessionStatus.PLANNED]
@@ -404,7 +404,8 @@ def test_unedited_session_in_an_odd_place_is_replaced(client: TestClient, db: Se
     plain = _hand_place_first_session(db)
     db.commit()
     client.patch(f"{API}/tasks/{task['id']}", json={"priority": 4}, headers=headers)
-    assert str(plain.id) in {c["session_id"] for c in preview(client, headers)["changes"]}
+    changed = preview(client, headers, "regenerate")["changes"]
+    assert str(plain.id) in {c["session_id"] for c in changed}
 
 
 def test_session_already_underway_is_kept(client: TestClient, db: Session) -> None:

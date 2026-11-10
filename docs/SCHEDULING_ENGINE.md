@@ -1,7 +1,7 @@
 # CoursePilot — Scheduling Engine Design
 
-> **Status:** sections 1 to 7 and 10 are implemented (Milestone 3). Sections 8 and 9, repair-based
-> rescheduling and manual control, are the design for Milestone 4.
+> **Status:** implemented through Milestone 4, except the constraint-optimization comparison in
+> section 11, which is proposed for Milestone 7.
 
 ## 1. Interface
 
@@ -168,17 +168,22 @@ The default mode is **repair**, not rebuild.
 
 ```text
 1. Classify future sessions: locked / sticky / flexible.
-2. Drop only what is invalid: its task is complete, it overlaps a new block or a locked session,
-   its time left availability, or it is past the task's deadline.
-3. Trim surplus: if a task has more planned time than remaining work, remove its latest sessions.
-4. Compute each task's deficit: remaining − retained.
-5. Place the deficits in free slots, leaving retained sessions untouched.
-6. If that leaves shortfall, release flexible sessions step by step, starting with those of the
-   latest-deadline tasks before the failing deadline, and replan until it fits or nothing is left.
-7. Release sticky sessions only as a last resort, flagging each in the proposal.
-   Locked sessions are never released.
-8. Diff old vs new → a proposal the user previews.
+2. Drop only what is invalid: its task is complete, it is past the task's deadline, its time left
+   availability, it overlaps a block or kept session, or it breaks current session, break or
+   daily-limit preferences.
+3. Trim surplus: if a task has more planned time than remaining work, shorten or remove its latest
+   sessions.
+4. Treat what is left as fixed and plan only each task's deficit around it.
+5. If that loses more work than a fresh plan would, release flexible sessions in growing batches,
+   starting with the latest-deadline work before the failing deadline, until it stops being worse.
+6. Release sticky sessions only as a last resort, and only if that saves more work. Each is flagged
+   in the preview and can be declined individually. Locked sessions are never released.
+7. Replan around the new sessions until nothing more fits, so a second update has nothing left to do.
+8. Diff old vs new, pairing removals with new sessions of the same task as moves.
 ```
+
+Work with no deadline inside the horizon is never "behind", so repair only tops it up to the share a
+fresh plan would give it. Otherwise each update would find free time and add more sessions for it.
 
 | Event | Effect |
 |-------|--------|
@@ -195,13 +200,16 @@ locked and sticky ones.
 **Stability** is reported as the share of previously planned future sessions left unchanged. Tests
 assert that small events cause small diffs.
 
+Events do not need dedicated triggers. Because repair compares reality with the plan, one dry run
+when the schedule is opened detects any of them and offers a suggestion. Nothing is applied unasked.
+
 ## 9. Manual control (M4)
 
 A manual move or resize runs through a pure `check_placement` function.
 
 | Result | Examples | Behavior |
 |--------|----------|----------|
-| **Hard conflict** | Overlaps another session; end before start | Refused with `409` and alternatives |
+| **Hard conflict** | Overlaps another session; start in the past | Refused with `409` and alternatives |
 | **Warning** | Outside availability; over daily limit; in a block; no break; past the deadline | Returned to the user, who can confirm |
 
 **Alternatives** come from a pure `suggest_slots` function: free slots of the same duration, ranked
@@ -225,6 +233,10 @@ Checked on hand-written scenarios and on randomly generated ones:
 8. Identical input gives byte-identical output.
 9. If plain EDF on the same slots meets every deadline, the plan does too.
 10. All of the above across DST transitions in several time zones.
+11. Repairing and rebuilding produce schedules that obey all of the above.
+12. Locked sessions are never changed by repair or rebuild.
+13. Repairing an already repaired schedule changes nothing.
+14. Repair never loses more work to overload than a rebuild would.
 
 The checker in `tests/unit/scheduler/support.py` is written independently of the engine and works
 from wall-clock rules, so a time-handling bug in the engine cannot hide by agreeing with itself.

@@ -122,6 +122,18 @@ def _expand_for_day(rules: tuple[WeeklyTime, ...], day: date, zone: ZoneInfo) ->
     )
 
 
+def expand_rules(
+    rules: tuple[WeeklyTime, ...], start: datetime, end: datetime, zone: ZoneInfo
+) -> list[Interval]:
+    """Every occurrence of weekly rules in a range, as merged real instants."""
+    first = start.astimezone(zone).date() - timedelta(days=1)
+    last = end.astimezone(zone).date() + timedelta(days=1)
+    occurrences: list[Interval] = []
+    for offset in range((last - first).days + 1):
+        occurrences.extend(_expand_for_day(rules, first + timedelta(days=offset), zone))
+    return merge_intervals(occurrences)
+
+
 def pinned_sessions(request: PlanRequest) -> list[Interval]:
     return [
         Interval(session.start, session.end)

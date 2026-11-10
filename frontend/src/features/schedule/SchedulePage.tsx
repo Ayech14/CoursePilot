@@ -1,8 +1,10 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Lock, LockOpen } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ErrorAlert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
+import { ConfirmDialog } from "../../components/ui/Modal";
 import { EmptyState, PageHeader, QueryState } from "../../components/ui/States";
 import {
   formatDuration,
@@ -14,14 +16,29 @@ import { useAuth } from "../auth/AuthContext";
 import {
   useApplyProposal,
   useCurrentProposal,
+  useDeleteSession,
   usePreview,
   useRejectProposal,
+  useScheduleStatus,
   useSessions,
+  useSetLocked,
+  type ScheduleStatus,
   type StudySession,
 } from "./api";
+import { EditSessionDialog } from "./EditSessionDialog";
 import { ProposalReview } from "./ProposalReview";
 
-function SessionRow({ session, zone }: { session: StudySession; zone: string }) {
+interface RowProps {
+  session: StudySession;
+  zone: string;
+  onEdit: () => void;
+  onRemove: () => void;
+}
+
+function SessionRow({ session, zone, onEdit, onRemove }: RowProps) {
+  const setLocked = useSetLocked();
+  const editable = session.status === "planned";
+  const LockIcon = session.is_locked ? Lock : LockOpen;
   return (
     <li className="px-4 py-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
@@ -39,6 +56,40 @@ function SessionRow({ session, zone }: { session: StudySession; zone: string }) 
         <span className="text-xs text-ink-subtle">
           {formatDuration(minutesBetween(session.start_at, session.end_at))}
         </span>
+        {session.is_locked && <span className="text-xs font-medium text-brand">Locked</span>}
+        {session.is_user_modified && !session.is_locked && (
+          <span className="text-xs text-ink-subtle">Edited by you</span>
+        )}
+        {editable && (
+          <span className="ml-auto flex gap-1">
+            <Button
+              variant="ghost"
+              compact
+              loading={setLocked.isPending}
+              aria-label={`${session.is_locked ? "Unlock" : "Lock"} ${session.task_title} at ${formatTime(session.start_at, zone)}`}
+              aria-pressed={session.is_locked}
+              onClick={() => setLocked.mutate({ id: session.id, locked: !session.is_locked })}
+            >
+              <LockIcon aria-hidden="true" className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              compact
+              aria-label={`Change ${session.task_title} at ${formatTime(session.start_at, zone)}`}
+              onClick={onEdit}
+            >
+              Change
+            </Button>
+            <Button
+              variant="ghost"
+              compact
+              aria-label={`Remove ${session.task_title} at ${formatTime(session.start_at, zone)}`}
+              onClick={onRemove}
+            >
+              Remove
+            </Button>
+          </span>
+        )}
       </div>
       {session.explanation && (
         <details className="mt-1 text-xs text-ink-muted sm:pl-[10.75rem]">
@@ -46,19 +97,36 @@ function SessionRow({ session, zone }: { session: StudySession; zone: string }) 
           <p className="mt-1">{session.explanation}</p>
         </details>
       )}
+      {setLocked.error && <p className="mt-1 text-xs text-danger">{setLocked.error.message}</p>}
     </li>
   );
+}
+
+function describeStatus(status: ScheduleStatus): string {
+  const parts: string[] = [];
+  if (status.missed_sessions > 0) {
+    parts.push(`${status.missed_sessions} missed session${status.missed_sessions === 1 ? "" : "s"}`);
+  }
+  const changes = status.added + status.moved + status.resized + status.removed;
+  parts.push(`${changes} suggested change${changes === 1 ? "" : "s"}`);
+  return parts.join(" and ");
 }
 
 export function SchedulePage() {
   const zone = useAuth().user!.timezone;
   const proposal = useCurrentProposal();
   const sessions = useSessions();
+  const status = useScheduleStatus();
   const preview = usePreview();
   const apply = useApplyProposal();
   const reject = useRejectProposal();
-  const actionError = preview.error ?? apply.error ?? reject.error;
+  const remove = useDeleteSession();
+  const [editing, setEditing] = useState<StudySession | null>(null);
+  const [removing, setRemoving] = useState<StudySession | null>(null);
+
+  const actionError = preview.error ?? apply.error ?? reject.error ?? remove.error;
   const hasSessions = (sessions.data?.length ?? 0) > 0;
+  const showBanner = hasSessions && !proposal.data && status.data?.needs_update === true;
 
   return (
     <>
@@ -66,9 +134,20 @@ export function SchedulePage() {
         title="Schedule"
         subtitle={`Your study plan, in ${zone}.`}
         action={
-          <Button loading={preview.isPending} onClick={() => preview.mutate()}>
-            {hasSessions ? "Update schedule" : "Generate schedule"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {hasSessions && (
+              <Button
+                variant="secondary"
+                disabled={preview.isPending}
+                onClick={() => preview.mutate("regenerate")}
+              >
+                Rebuild from scratch
+              </Button>
+            )}
+            <Button loading={preview.isPending} onClick={() => preview.mutate("repair")}>
+              {hasSessions ? "Update schedule" : "Generate schedule"}
+            </Button>
+          </div>
         }
       />
 
@@ -78,17 +157,33 @@ export function SchedulePage() {
         </div>
       )}
 
+      {showBanner && status.data && (
+        <section
+          aria-label="Schedule needs an update"
+          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-5 py-4"
+        >
+          <div>
+            <h2 className="text-sm font-semibold">Your schedule needs an update</h2>
+            <p className="mt-0.5 text-sm text-ink-muted">{describeStatus(status.data)}.</p>
+          </div>
+          <Button variant="secondary" onClick={() => preview.mutate("repair")}>
+            Review changes
+          </Button>
+        </section>
+      )}
+
       <QueryState query={proposal}>
         {(current) =>
           current && (
             <ProposalReview
+              key={current.id}
               proposal={current}
               zone={zone}
               applying={apply.isPending}
               discarding={reject.isPending}
-              onApply={() => {
+              onApply={(rejected) => {
                 preview.reset();
-                apply.mutate(current.id);
+                apply.mutate({ id: current.id, rejected });
               }}
               onDiscard={() => reject.mutate(current.id)}
             />
@@ -121,7 +216,13 @@ export function SchedulePage() {
                   <h2 className="mb-2 text-sm font-semibold">{day.heading}</h2>
                   <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
                     {day.items.map((session) => (
-                      <SessionRow key={session.id} session={session} zone={zone} />
+                      <SessionRow
+                        key={session.id}
+                        session={session}
+                        zone={zone}
+                        onEdit={() => setEditing(session)}
+                        onRemove={() => setRemoving(session)}
+                      />
                     ))}
                   </ul>
                 </section>
@@ -130,6 +231,20 @@ export function SchedulePage() {
           )
         }
       </QueryState>
+
+      {editing && (
+        <EditSessionDialog session={editing} zone={zone} onClose={() => setEditing(null)} />
+      )}
+      {removing && (
+        <ConfirmDialog
+          title="Remove this session?"
+          message={`Its time goes back to "${removing.task_title}" as work still to be planned.`}
+          confirmLabel="Remove session"
+          loading={remove.isPending}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => remove.mutate(removing.id, { onSuccess: () => setRemoving(null) })}
+        />
+      )}
     </>
   );
 }

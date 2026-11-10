@@ -29,7 +29,7 @@ preview and apply, list view. E1–E5.
 **Done when:** every invariant in `SCHEDULING_ENGINE.md` §10 passes on hand-written and generated
 scenarios, and a benchmark records planning time.
 
-### M4: Adaptive Planning and Manual Control — Not started
+### M4: Adaptive Planning and Manual Control — Done
 Repair algorithm, event triggers, missed-session reconcile, proposal diffs, accept and reject, move,
 resize, lock, conflict detection, alternatives. F1–F3, J1–J8 (API).
 **Done when:** each event type in the design has a test showing minimal change, and locked sessions
@@ -97,13 +97,32 @@ The browser journey found two bugs that automated tests had missed, both now fix
 reserved logging field crashed previews, because tests ran below `INFO` level, and one impossible task
 removed every other task's early-finish margin.
 
+### M4 verification record (2026-11-10)
+
+| Check | Result |
+|-------|--------|
+| Backend tests against real PostgreSQL 17, also inside the Docker image | 4984 passed, 99% coverage |
+| Frontend tests (stubbed server), lint, types, build | 102 passed, clean |
+| Benchmark: repairing 288 sessions after losing a weekday | 0.2 s, 44 changes |
+| Each event type has a test showing a minimal change | Missed, overrun, early finish, new exam, deadline earlier and later, lost availability, new block, lower limit |
+| Repair and rebuild obey every rule on 500 generated scenarios | Passed |
+| Locked sessions never change | Passed on all 500, for repair and rebuild |
+| Repairing a repaired schedule changes nothing | Passed on all 500 |
+| Repair loses no more work than a rebuild | Passed on all 500 |
+| Deliberately introduced bugs (6 in repair and placement, 6 in the API) | Each caused failures |
+| Manual browser journey on the real stack | Missed session gave 1 added and 7 unchanged; conflict showed suggested times; locked and edited sessions stayed through an availability change that moved the other 6 |
+
+The generated scenarios found two real bugs during development: repeated updates kept adding sessions
+for open-ended work, and a session could be both shortened and removed in one proposal.
+
 **Known gaps carried forward:**
 - Login rate limiting is not implemented (M6).
 - Docker images are for development. Production images are in M6.
 - The Analytics page is labeled "Not built yet". The dashboard has no data widgets until M5.
-- The schedule is a list, not a calendar, and sessions cannot be moved by hand yet (M4 and M5).
+- The schedule is a list with a form for moving sessions. Drag and drop arrives with the calendar (M5).
+- Missed sessions are detected when the schedule is opened, not at the moment they are missed (by design; see `PRD.md`).
+- A session running now has no timer yet, so it cannot be marked as started (M5).
 - There is no Playwright suite yet (M6). The browser journeys above were run by hand.
-- Edits invalidate an open preview, but nothing yet suggests a new plan automatically (M4).
 - Time already studied today does not count toward the daily limit until the timer exists (M5).
 - Scoring weights are reasoned starting values and have not been tuned against data (M7).
 - The timer and notification tables exist and their constraints are tested, but no API uses them yet.

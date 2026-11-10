@@ -14,6 +14,7 @@ export interface AtRisk {
 export interface ProposalChange {
   id: string;
   action: "create" | "move" | "resize" | "remove";
+  session_id: string | null;
   task_id: string;
   task_title: string;
   course_name: string | null;
@@ -23,12 +24,14 @@ export interface ProposalChange {
   after_start_at: string | null;
   after_end_at: string | null;
   explanation: string | null;
+  sticky_released: boolean;
 }
 
 export interface Proposal {
   id: string;
   status: string;
   unchanged_sessions: number;
+  stability_percent: number;
   at_risk: AtRisk[];
   unplaced: { task_id: string; task_title: string; minutes: number }[];
   changes: ProposalChange[];
@@ -36,13 +39,34 @@ export interface Proposal {
 
 export interface StudySession {
   id: string;
+  task_id: string;
   task_title: string;
   course_name: string | null;
   course_color: string | null;
   start_at: string;
   end_at: string;
   status: string;
+  origin: string;
+  is_locked: boolean;
+  is_user_modified: boolean;
   explanation: string | null;
+}
+
+export interface ScheduleStatus {
+  needs_update: boolean;
+  added: number;
+  moved: number;
+  resized: number;
+  removed: number;
+  missed_sessions: number;
+  at_risk: number;
+}
+
+export interface Placement {
+  ok: boolean;
+  conflicts: { kind: string; message: string; session_id: string | null }[];
+  warnings: { kind: string; message: string }[];
+  alternatives: { start_at: string; end_at: string }[];
 }
 
 const PROPOSAL_KEY = ["schedule", "proposal"];
@@ -62,21 +86,60 @@ export function useSessions() {
   });
 }
 
+export function useScheduleStatus() {
+  return useQuery<ScheduleStatus, ApiError>({
+    queryKey: ["schedule", "status"],
+    queryFn: () => api("/schedule/status"),
+  });
+}
+
+export type PreviewMode = "repair" | "regenerate";
+
 export function usePreview() {
   const client = useQueryClient();
-  return useMutation<Proposal, ApiError>({
-    mutationFn: () => api("/schedule/preview", "POST"),
+  return useMutation<Proposal, ApiError, PreviewMode>({
+    mutationFn: (mode) => api("/schedule/preview", "POST", { mode }),
     onSuccess: (proposal) => client.setQueryData(PROPOSAL_KEY, proposal),
   });
 }
 
-function useCloseProposal<T>(action: "apply" | "reject") {
+function useScheduleMutation<TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>) {
   const client = useQueryClient();
-  return useMutation<T, ApiError, string>({
-    mutationFn: (id) => api(`/schedule/proposals/${id}/${action}`, "POST"),
+  return useMutation<TResult, ApiError, TInput>({
+    mutationFn,
     onSettled: () => client.invalidateQueries({ queryKey: ["schedule"] }),
   });
 }
 
-export const useApplyProposal = () => useCloseProposal<{ created: number; removed: number }>("apply");
-export const useRejectProposal = () => useCloseProposal<void>("reject");
+export function useApplyProposal() {
+  return useScheduleMutation(({ id, rejected }: { id: string; rejected: string[] }) =>
+    api(`/schedule/proposals/${id}/apply`, "POST", { rejected_change_ids: rejected }),
+  );
+}
+
+export function useRejectProposal() {
+  return useScheduleMutation((id: string) => api<void>(`/schedule/proposals/${id}/reject`, "POST"));
+}
+
+export function useSetLocked() {
+  return useScheduleMutation(({ id, locked }: { id: string; locked: boolean }) =>
+    api(`/sessions/${id}/${locked ? "lock" : "unlock"}`, "POST"),
+  );
+}
+
+export function useDeleteSession() {
+  return useScheduleMutation((id: string) => api<void>(`/sessions/${id}`, "DELETE"));
+}
+
+export interface SessionTimes {
+  id: string;
+  start_at: string;
+  end_at: string;
+  acknowledge_warnings: boolean;
+}
+
+export function useMoveSession() {
+  return useScheduleMutation(({ id, ...body }: SessionTimes) =>
+    api<StudySession>(`/sessions/${id}`, "PATCH", body),
+  );
+}

@@ -166,9 +166,8 @@ All routes are under `/api/v1`. Interactive docs are served at `/docs`.
 | Tasks | `GET, POST /tasks` (filters and paging), `GET, PATCH, DELETE /tasks/{id}`, `POST /tasks/{id}/progress` | M2 |
 | Availability | `GET, PUT /availability/windows` (replaces the week), CRUD `/availability/recurring-blocks`, `/availability/one-off-blocks` | M2 |
 | Preferences | `GET, PUT /preferences` | M2 |
-| Schedule | `POST /schedule/preview`, `GET /schedule/proposals/{current,{id}}`, `POST …/{id}/apply`, `POST …/{id}/reject` | M3 |
-| Sessions | `GET /sessions?start&end` | M3 |
-| Manual control | `PATCH /sessions/{id}`, `POST /sessions`, `POST …/{lock,unlock}`, `POST …/check-placement` | M4 |
+| Schedule | `POST /schedule/preview` (repair or regenerate), `GET /schedule/status`, `GET /schedule/proposals/{current,{id}}`, `POST …/{id}/apply`, `POST …/{id}/reject` | M3–M4 |
+| Sessions | `GET, POST /sessions`, `PATCH, DELETE /sessions/{id}`, `POST …/{id}/{lock,unlock}`, `POST /sessions/check-placement` | M3–M4 |
 | Session timer | `POST /sessions/{id}/{start,pause,resume,finish}` | M5 |
 | Dashboard, analytics | `GET /dashboard`, `GET /analytics/*` | M5 |
 | Notifications | `GET /notifications`, `POST /notifications/{id}/read` | M6 |

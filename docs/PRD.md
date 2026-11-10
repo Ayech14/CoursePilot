@@ -96,8 +96,8 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 ### J. Manual schedule control
 | ID | Requirement | Milestone |
 |----|-------------|-----------|
-| J1 | Move sessions between days and time slots | M4 (API), M5 (drag and drop) |
-| J2 | Resize sessions | M4 (API), M5 (drag and drop) |
+| J1 | Move sessions between days and time slots | M4 (form), M5 (drag and drop) |
+| J2 | Resize sessions | M4 (form), M5 (drag and drop) |
 | J3 | Lock sessions against automatic moves | M4 |
 | J4 | Regenerate while preserving locked sessions | M4 |
 | J5 | Detect conflicts on manual change | M4 |

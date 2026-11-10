@@ -55,6 +55,11 @@ export function groupByLocalDay<T>(
   return [...groups.values()];
 }
 
+/** A UTC ISO instant the given number of minutes after another. */
+export function addMinutes(iso: string, minutes: number): string {
+  return DateTime.fromISO(iso).plus({ minutes }).toUTC().toISO()!;
+}
+
 export function isPast(iso: string): boolean {
   return DateTime.fromISO(iso) < DateTime.now();
 }

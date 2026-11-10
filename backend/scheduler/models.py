@@ -120,3 +120,42 @@ class PlanResult:
     placements: tuple[Placement, ...]
     at_risk: tuple[AtRiskTask, ...] = ()
     unplaced: tuple[UnplacedTask, ...] = field(default=())
+
+
+class ChangeKind(StrEnum):
+    CREATE = "create"
+    MOVE = "move"
+    RESIZE = "resize"
+    REMOVE = "remove"
+
+
+class RepairReason(StrEnum):
+    TASK_FINISHED = "task_finished"
+    LESS_WORK_NEEDED = "less_work_needed"
+    PAST_DEADLINE = "past_deadline"
+    OUTSIDE_AVAILABILITY = "outside_availability"
+    TIME_BLOCKED = "time_blocked"
+    DAILY_LIMIT = "daily_limit"
+    SCHEDULE_RULES = "schedule_rules"
+    MAKING_ROOM = "making_room"
+    REBUILT = "rebuilt"
+
+
+@dataclass(frozen=True)
+class SessionChange:
+    kind: ChangeKind
+    task_id: str
+    session_id: str | None = None
+    before: Interval | None = None
+    after: Interval | None = None
+    reason: RepairReason | None = None
+    explanation: Explanation | None = None
+    sticky_released: bool = False  # The student's own edit is being overridden.
+
+
+@dataclass(frozen=True)
+class RepairResult:
+    changes: tuple[SessionChange, ...]
+    unchanged: int
+    at_risk: tuple[AtRiskTask, ...] = ()
+    unplaced: tuple[UnplacedTask, ...] = ()

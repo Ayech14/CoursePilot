@@ -31,6 +31,7 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly fieldErrors: Record<string, string>;
+  readonly details: unknown;
   readonly requestId: string | null;
 
   constructor(
@@ -45,6 +46,7 @@ export class ApiError extends Error {
     this.status = status;
     this.code = code;
     this.requestId = requestId;
+    this.details = details;
     this.fieldErrors = Array.isArray(details)
       ? Object.fromEntries((details as ErrorDetail[]).map((d) => [d.field, d.message]))
       : {};

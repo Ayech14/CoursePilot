@@ -92,6 +92,32 @@ class ProposalStaleError(AppError):
     message = "Your schedule or tasks changed after this preview. Please create a new preview."
 
 
+class ProposalConflictError(AppError):
+    status_code = 409
+    code = "proposal_conflict"
+    message = "Those choices conflict with each other. Accept more changes or create a new preview."
+
+
+class SessionNotEditableError(AppError):
+    status_code = 409
+    code = "session_not_editable"
+    message = "Only sessions that have not started can be changed."
+
+
+class SessionConflictError(AppError):
+    status_code = 409
+    code = "session_conflict"
+    message = "That time is not available."
+
+
+class PlacementWarningsError(AppError):
+    """Not a failure: the student just needs to confirm a choice that bends their own rules."""
+
+    status_code = 409
+    code = "placement_warnings"
+    message = "That time goes against your study preferences. Confirm to keep it anyway."
+
+
 class InvalidFieldsError(AppError):
     """A rule that needs database state, reported in the same shape as schema validation."""
 

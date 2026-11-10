@@ -53,6 +53,14 @@ ID_ROUTES: dict[tuple[str, str], dict[str, Any] | None] = {
     ("GET", "/schedule/proposals/{proposal_id}"): None,
     ("POST", "/schedule/proposals/{proposal_id}/apply"): None,
     ("POST", "/schedule/proposals/{proposal_id}/reject"): None,
+    ("PATCH", "/sessions/{session_id}"): {
+        "start_at": "2099-02-05T10:00:00Z",
+        "end_at": "2099-02-05T10:50:00Z",
+        "acknowledge_warnings": True,
+    },
+    ("DELETE", "/sessions/{session_id}"): None,
+    ("POST", "/sessions/{session_id}/lock"): None,
+    ("POST", "/sessions/{session_id}/unlock"): None,
 }
 
 
@@ -90,8 +98,22 @@ def _seed(client: TestClient, owner: Headers) -> dict[str, tuple[str, str]]:
     one_off = client.post(
         f"{API}/availability/one-off-blocks", json=_ONE_OFF_BODY, headers=owner
     ).json()["id"]
+    session = client.post(
+        f"{API}/sessions",
+        json={
+            "task_id": task,
+            "start_at": "2099-01-05T10:00:00Z",
+            "end_at": "2099-01-05T10:50:00Z",
+            "acknowledge_warnings": True,
+        },
+        headers=owner,
+    ).json()["id"]
     proposal = client.post(f"{API}/schedule/preview", headers=owner).json()["id"]
     return {
+        "session_id": (
+            session,
+            f"{API}/sessions?start=2099-01-01T00:00:00Z&end=2100-01-01T00:00:00Z",
+        ),
         "proposal_id": (proposal, f"{API}/schedule/proposals/{proposal}"),
         "course_id": (course, f"{API}/courses/{course}"),
         "task_id": (task, f"{API}/tasks/{task}"),

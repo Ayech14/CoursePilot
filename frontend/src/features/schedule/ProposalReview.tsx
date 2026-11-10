@@ -1,7 +1,9 @@
 import { TriangleAlert } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "../../components/ui/Button";
 import {
+  formatDateTime,
   formatDuration,
   formatTime,
   groupByLocalDay,
@@ -14,25 +16,62 @@ interface Props {
   zone: string;
   applying: boolean;
   discarding: boolean;
-  onApply: () => void;
+  onApply: (rejected: string[]) => void;
   onDiscard: () => void;
 }
+
+const LABELS: Record<ProposalChange["action"], string> = {
+  create: "Add",
+  move: "Move",
+  resize: "Shorten",
+  remove: "Remove",
+};
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-function ChangeRow({ change, zone }: { change: ProposalChange; zone: string }) {
+function summarize(proposal: Proposal): string {
+  const count = (action: ProposalChange["action"]) =>
+    proposal.changes.filter((change) => change.action === action).length;
+  const parts = [
+    [count("create"), "to add"],
+    [count("move"), "to move"],
+    [count("resize"), "to shorten"],
+    [count("remove"), "to remove"],
+  ]
+    .filter(([value]) => value)
+    .map(([value, label]) => `${value} ${label}`);
+  const stability =
+    proposal.unchanged_sessions > 0
+      ? `, ${proposal.unchanged_sessions} unchanged (${proposal.stability_percent}% of your plan)`
+      : "";
+  return `${parts.join(", ")}${stability}. Nothing changes until you apply.`;
+}
+
+interface RowProps {
+  change: ProposalChange;
+  zone: string;
+  accepted: boolean;
+  onToggle: () => void;
+}
+
+function ChangeRow({ change, zone, accepted, onToggle }: RowProps) {
   const removing = change.action === "remove";
-  const start = (removing ? change.before_start_at : change.after_start_at)!;
-  const end = (removing ? change.before_end_at : change.after_end_at)!;
+  const start = (change.after_start_at ?? change.before_start_at)!;
+  const end = (change.after_end_at ?? change.before_end_at)!;
   return (
-    <li className="py-2.5">
+    <li className={`py-2.5 ${accepted ? "" : "opacity-50"}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        <span
-          className={`w-16 text-xs font-medium ${removing ? "text-danger" : "text-brand"}`}
-        >
-          {removing ? "Remove" : "Add"}
+        <input
+          type="checkbox"
+          checked={accepted}
+          onChange={onToggle}
+          aria-label={`Accept: ${LABELS[change.action]} ${change.task_title} at ${formatTime(start, zone)}`}
+          className="accent-brand"
+        />
+        <span className={`w-14 text-xs font-medium ${removing ? "text-danger" : "text-brand"}`}>
+          {LABELS[change.action]}
         </span>
         <span className="w-40 shrink-0 text-ink-muted tabular-nums">
           {formatTime(start, zone)} to {formatTime(end, zone)}
@@ -49,22 +88,38 @@ function ChangeRow({ change, zone }: { change: ProposalChange; zone: string }) {
         </span>
         <span className="text-xs text-ink-subtle">{formatDuration(minutesBetween(start, end))}</span>
       </div>
-      {change.explanation && (
-        <p className="mt-1 text-xs text-ink-muted sm:pl-[15.25rem]">{change.explanation}</p>
-      )}
+      <div className="mt-1 space-y-0.5 text-xs text-ink-muted sm:pl-[17rem]">
+        {change.action === "move" && (
+          <p>From {formatDateTime(change.before_start_at!, zone)}</p>
+        )}
+        {change.explanation && <p>{change.explanation}</p>}
+        {change.sticky_released && (
+          <p className="font-medium text-danger">
+            You placed this session yourself. It only moves if you accept this change.
+          </p>
+        )}
+      </div>
     </li>
   );
 }
 
 export function ProposalReview({ proposal, zone, applying, discarding, onApply, onDiscard }: Props) {
-  const added = proposal.changes.filter((change) => change.action !== "remove").length;
-  const removed = proposal.changes.length - added;
+  const [rejected, setRejected] = useState<Set<string>>(new Set());
   const nothingToDo = proposal.changes.length === 0;
+  const allRejected = !nothingToDo && rejected.size === proposal.changes.length;
   const days = groupByLocalDay(
     proposal.changes,
     (change) => (change.after_start_at ?? change.before_start_at)!,
     zone,
   );
+
+  function toggle(id: string) {
+    setRejected((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }
 
   return (
     <section
@@ -77,7 +132,7 @@ export function ProposalReview({ proposal, zone, applying, discarding, onApply, 
       <p className="mt-0.5 text-sm text-ink-muted">
         {nothingToDo
           ? `${plural(proposal.unchanged_sessions, "session")} would stay as planned.`
-          : `${plural(added, "session")} to add, ${removed} to remove, ${proposal.unchanged_sessions} unchanged. Nothing changes until you apply.`}
+          : summarize(proposal)}
       </p>
 
       {proposal.at_risk.length > 0 && (
@@ -115,7 +170,13 @@ export function ProposalReview({ proposal, zone, applying, discarding, onApply, 
           <h3 className="text-sm font-semibold">{day.heading}</h3>
           <ul className="divide-y divide-line">
             {day.items.map((change) => (
-              <ChangeRow key={change.id} change={change} zone={zone} />
+              <ChangeRow
+                key={change.id}
+                change={change}
+                zone={zone}
+                accepted={!rejected.has(change.id)}
+                onToggle={() => toggle(change.id)}
+              />
             ))}
           </ul>
         </div>
@@ -123,8 +184,12 @@ export function ProposalReview({ proposal, zone, applying, discarding, onApply, 
 
       <div className="mt-5 flex flex-wrap gap-2">
         {!nothingToDo && (
-          <Button loading={applying} disabled={discarding} onClick={onApply}>
-            Apply changes
+          <Button
+            loading={applying}
+            disabled={discarding || allRejected}
+            onClick={() => onApply([...rejected])}
+          >
+            {rejected.size > 0 ? "Apply selected" : "Apply changes"}
           </Button>
         )}
         <Button variant="secondary" loading={discarding} disabled={applying} onClick={onDiscard}>

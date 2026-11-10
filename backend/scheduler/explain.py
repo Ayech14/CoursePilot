@@ -1,6 +1,7 @@
 """Turns a structured explanation into a sentence a student can read."""
 
-from scheduler.models import Explanation, Reason, RiskReason
+from scheduler.models import Explanation, Reason, RepairReason, RiskReason
+from scheduler.placement import ConflictKind, WarningKind
 
 
 def describe(explanation: Explanation) -> str:
@@ -35,3 +36,47 @@ def describe_risk(reason: RiskReason) -> str:
             )
         case RiskReason.INSUFFICIENT_TIME:
             return "There is not enough available study time before the deadline."
+
+
+def describe_repair(reason: RepairReason) -> str:
+    match reason:
+        case RepairReason.TASK_FINISHED:
+            return "This task no longer needs study time."
+        case RepairReason.LESS_WORK_NEEDED:
+            return "Less work remains on this task than was scheduled."
+        case RepairReason.PAST_DEADLINE:
+            return "This session would end after the task's deadline."
+        case RepairReason.OUTSIDE_AVAILABILITY:
+            return "This time is no longer in your weekly study hours."
+        case RepairReason.TIME_BLOCKED:
+            return "Something else now takes up this time."
+        case RepairReason.DAILY_LIMIT:
+            return "This day is over your daily study limit."
+        case RepairReason.SCHEDULE_RULES:
+            return "This no longer fits your session length or break preferences."
+        case RepairReason.MAKING_ROOM:
+            return "This time is needed so that a more urgent task can meet its deadline."
+        case RepairReason.REBUILT:
+            return "Replaced as part of rebuilding your schedule."
+
+
+def describe_conflict(kind: ConflictKind) -> str:
+    match kind:
+        case ConflictKind.OVERLAP:
+            return "This overlaps another study session."
+        case ConflictKind.IN_PAST:
+            return "This time has already passed."
+
+
+def describe_warning(kind: WarningKind) -> str:
+    match kind:
+        case WarningKind.OUTSIDE_AVAILABILITY:
+            return "This is outside your weekly study hours."
+        case WarningKind.IN_BLOCK:
+            return "This overlaps a commitment or time off."
+        case WarningKind.NO_BREAK:
+            return "This leaves less than your preferred break next to another session."
+        case WarningKind.DAILY_LIMIT:
+            return "This puts the day over your daily study limit."
+        case WarningKind.PAST_DEADLINE:
+            return "This ends after the task's deadline."

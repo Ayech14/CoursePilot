@@ -11,8 +11,16 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from scheduler import plan
-from scheduler.models import PlanRequest, Preferences, TaskInput, WeeklyTime
+from scheduler.models import (
+    ExistingSession,
+    PlanRequest,
+    Preferences,
+    SessionClass,
+    TaskInput,
+    WeeklyTime,
+)
 from scheduler.planner import plain_edf_late_minutes
+from scheduler.repair import repair
 from tests.unit.scheduler.support import assert_invariants, random_request, shuffled
 
 SEEDS = range(500)
@@ -81,6 +89,23 @@ def test_planning_time_stays_interactive(horizon_days: int, limit_seconds: float
     print(f"\nplanned {len(request.tasks)} tasks over {horizon_days} days in {elapsed:.3f}s")
     assert_invariants(request, result)
     assert elapsed < limit_seconds
+
+
+def test_repair_stays_interactive_under_a_full_schedule() -> None:
+    fresh = _heavy_semester(28)
+    sessions = tuple(
+        ExistingSession(f"s{i}", p.task_id, p.start, p.end, SessionClass.FLEXIBLE)
+        for i, p in enumerate(plan(fresh).placements)
+    )
+    # A far-reaching change: a whole weekday of availability disappears.
+    windows = tuple(w for w in fresh.windows if w.day_of_week != 2)
+    request = replace(fresh, windows=windows, existing_sessions=sessions)
+    started = time.perf_counter()
+    result = repair(request)
+    elapsed = time.perf_counter() - started
+    print(f"\nrepaired {len(sessions)} sessions in {elapsed:.3f}s, {len(result.changes)} changes")
+    assert result.changes
+    assert elapsed < 5.0
 
 
 def test_scales_with_a_tight_workload() -> None:
