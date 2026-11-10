@@ -133,13 +133,15 @@ it rises as later milestones build on it.
 |---|----------|----------|-----------|
 | 1 | Are exams a separate entity? | No. An exam is a task whose deadline is its start time and whose effort is preparation time. | They share nearly every field and all scheduling behavior. |
 | 2 | Must a task have a course? | No. `course_id` is optional, for general study. | The spec lists "general study tasks". |
-| 3 | Must a task have a deadline? | No. Undated tasks are planned last, with low urgency. | Readings and revision often have none. |
+| 3 | Must a task have a deadline? | No, except exams and quizzes. Undated tasks are planned last, with low urgency. | Readings and revision often have none, but an exam without a date cannot be planned for. |
 | 4 | Do changes apply automatically? | Never. Events create a suggestion and the user previews and applies it. | F3 and J7 require user control. |
 | 5 | When is a session "missed"? | A planned session that ended over 30 minutes ago and was never started. Reconciled when the user next loads their schedule. | Avoids needing a background worker. |
 | 6 | Does moving a session lock it? | No. A moved session becomes *sticky*: kept whenever possible. Locking is a separate explicit action and is absolute. | Matches the spec's distinction between "modified" and "locked". |
 | 7 | Can a manual move break soft rules? | Yes, with a warning: outside availability, over the daily limit, past the deadline. Overlap is always refused. | The student knows their life better than the rules do. Overlap is physically impossible. |
 | 8 | Accept proposals whole or per change? | Both. Rejecting a single change is validated again, since it can cause a conflict. | J7 says "accept or reject proposed schedule changes". |
 | 9 | Password reset and email verification? | Out of scope for v1. | Both need an email provider, and core features must not depend on external services. |
+| 10a | Does logging the full estimate finish a task? | No. It keeps at least 15 minutes remaining until the student marks it finished or sets remaining effort to zero. | Time spent is not proof the work is done, and a task that runs long is an expected case. |
+| 10b | Can tasks be added to an archived course? | No. Existing tasks keep their course. | Archiving means the course is over. |
 | 10 | What if the work cannot fit? | Plan as much as possible and report which tasks are at risk and by how many minutes. | An honest "this will not fit" is the most useful output in an overloaded week. |
 
 ## 7. Open questions for the project owner

@@ -7,6 +7,7 @@ from typing import Any, ClassVar
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import request_id_var
@@ -53,6 +54,45 @@ class EmailTakenError(AppError):
     message = "An account with this email already exists."
 
 
+class NotFoundError(AppError):
+    """Also used for another user's records, so that their existence is not revealed."""
+
+    status_code = 404
+    code = "not_found"
+    message = "We could not find that item."
+
+
+class ConflictError(AppError):
+    status_code = 409
+    code = "conflict"
+    message = "That change conflicts with the current data. Please refresh and try again."
+
+
+class CourseArchivedError(AppError):
+    status_code = 409
+    code = "course_archived"
+    message = "This course is archived. Restore it before adding tasks."
+
+
+class TaskCompletedError(AppError):
+    status_code = 409
+    code = "task_completed"
+    message = "This task is already completed. Reopen it to record more progress."
+
+
+class InvalidFieldsError(AppError):
+    """A rule that needs database state, reported in the same shape as schema validation."""
+
+    status_code = 422
+    code = "validation_error"
+    message = "The submitted data is invalid."
+
+    def __init__(self, fields: dict[str, str]) -> None:
+        super().__init__(
+            details=[{"field": field, "message": text} for field, text in fields.items()]
+        )
+
+
 class ServiceUnavailableError(AppError):
     status_code = 503
     code = "service_unavailable"
@@ -88,6 +128,14 @@ def _friendly_message(err: Any) -> str:
         return f"Must be at least {context['min_length']} characters."
     if kind == "string_too_long":
         return f"Must be at most {context['max_length']} characters."
+    if kind == "string_pattern_mismatch":
+        return "Has an invalid format."
+    if kind in {"int_type", "int_parsing", "int_from_float"}:
+        return "Enter a whole number."
+    if kind == "timezone_aware":
+        return "Must include a time zone."
+    if kind in {"datetime_type", "datetime_parsing", "datetime_from_date_parsing"}:
+        return "Enter a date and time."
     message: str = err["msg"]
     return message.removeprefix("Value error, ").removeprefix(
         "value is not a valid email address: "
@@ -121,7 +169,17 @@ async def _handle_http_exception(_: Request, exc: Exception) -> JSONResponse:
     )
 
 
+async def _handle_integrity_error(_: Request, exc: Exception) -> JSONResponse:
+    # Services validate first, so reaching this means a race that the database correctly stopped.
+    logger.warning("integrity_conflict", extra={"detail": str(exc.__cause__)})
+    return JSONResponse(
+        status_code=ConflictError.status_code,
+        content=error_body(ConflictError.code, ConflictError.message),
+    )
+
+
 def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(AppError, _handle_app_error)
     app.add_exception_handler(RequestValidationError, _handle_validation_error)
     app.add_exception_handler(StarletteHTTPException, _handle_http_exception)
+    app.add_exception_handler(IntegrityError, _handle_integrity_error)

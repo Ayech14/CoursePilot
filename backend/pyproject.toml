@@ -36,6 +36,8 @@ include = ["app*", "scheduler*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+# A test whose parameters come out empty must fail, not silently skip.
+empty_parameter_set_mark = "fail_at_collect"
 
 [tool.ruff]
 line-length = 100

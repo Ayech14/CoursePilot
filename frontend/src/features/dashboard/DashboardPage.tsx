@@ -1,4 +1,5 @@
 import { Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 
@@ -40,8 +41,19 @@ export function DashboardPage() {
         <h2 className="mt-4 text-base font-semibold">Nothing to show yet</h2>
         <p className="mt-1.5 max-w-md text-sm text-ink-muted">
           Your dashboard will summarize deadlines, today's study plan and workload using your own
-          data. Course and task entry arrive in the next milestone.
+          data. It arrives in Milestone 5. Until then, you can start entering your semester.
         </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-4 text-sm font-medium text-brand">
+          <Link to="/courses" className="hover:underline">
+            Add courses
+          </Link>
+          <Link to="/tasks" className="hover:underline">
+            Add tasks
+          </Link>
+          <Link to="/availability" className="hover:underline">
+            Set availability
+          </Link>
+        </div>
       </section>
     </>
   );

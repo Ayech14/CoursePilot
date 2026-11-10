@@ -55,6 +55,9 @@ class Task(UUIDPrimaryKey, Timestamps, Base):
         CheckConstraint(
             "(status = 'completed') = (completed_at IS NOT NULL)", name="completed_at_matches"
         ),
+        CheckConstraint(
+            "(status = 'completed') = (remaining_minutes = 0)", name="remaining_matches_status"
+        ),
         Index(None, "user_id", "status", "deadline_at"),
         Index(None, "course_id"),
     )

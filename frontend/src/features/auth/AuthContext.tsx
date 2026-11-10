@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -39,11 +40,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
   const [user, setUserState] = useState<User | null>(null);
 
+  const queryClient = useQueryClient();
+
   const clearSession = useCallback(() => {
     setAccessToken(null);
     setUserState(null);
     setStatus("anonymous");
-  }, []);
+    // Cached data must not be visible to the next person who signs in on this browser.
+    queryClient.clear();
+  }, [queryClient]);
 
   const acceptSession = useCallback((session: AuthResponse) => {
     setAccessToken(session.access_token);

@@ -161,9 +161,9 @@ All routes are under `/api/v1`. Interactive docs are served at `/docs`.
 | Auth | `POST /auth/{register,login,refresh,logout}` | M1 |
 | Profile | `GET, PATCH /users/me` | M1 |
 | Health | `GET /health`, `GET /health/ready` (unversioned) | M1 |
-| Courses | CRUD `/courses`, `GET /courses/{id}/progress` | M2 |
-| Tasks | CRUD `/tasks` with filters, `POST /tasks/{id}/progress` | M2 |
-| Availability | `GET, PUT /availability`, CRUD `/availability/blocks` | M2 |
+| Courses | `GET, POST /courses`, `GET, PATCH, DELETE /courses/{id}` (progress is included) | M2 |
+| Tasks | `GET, POST /tasks` (filters and paging), `GET, PATCH, DELETE /tasks/{id}`, `POST /tasks/{id}/progress` | M2 |
+| Availability | `GET, PUT /availability/windows` (replaces the week), CRUD `/availability/recurring-blocks`, `/availability/one-off-blocks` | M2 |
 | Preferences | `GET, PUT /preferences` | M2 |
 | Schedule | `POST /schedule/preview`, `GET /schedule/proposals/{id}`, `POST …/apply`, `POST …/reject` | M3–M4 |
 | Sessions | `GET /sessions?from&to`, `POST /sessions`, `PATCH /sessions/{id}`, `POST …/{lock,unlock}`, `POST …/check-placement` | M3–M4 |
@@ -183,6 +183,9 @@ Requests for another user's resource return `404`, not `403`, so that existence 
   one shared refresh, so simultaneous failing requests do not each try to rotate the token.
 - **Same origin in every environment.** A Vite proxy in development, and a reverse proxy in
   production. This allows the `SameSite=Strict` cookie and avoids CORS.
+- **Dates in forms use the profile's time zone**, never the browser's, through `lib/datetime.ts`.
+  Luxon does this work because `datetime-local` inputs have no zone and the platform has no widely
+  supported way to convert one in a named zone. FullCalendar's named-zone support needs it in M5 too.
 - **Libraries added when needed:** FullCalendar in M5 (MIT core with drag, resize and named-zone
   support) and Recharts in M5.
 

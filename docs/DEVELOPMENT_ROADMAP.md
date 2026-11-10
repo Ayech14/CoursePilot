@@ -18,7 +18,7 @@ built. **Not started** is not built. Requirement IDs refer to `PRD.md`.
 Repository, Docker Compose, configuration, logging, errors, full schema and migration, authentication,
 application shell. Requirements: K1, K2 (schema), K3 (storage), K4, K5, K6.
 
-### M2: Academic Management — Not started
+### M2: Academic Management — Done
 Course, task, availability and preference APIs and screens. B1–B3, C1–C3, D1–D4.
 **Done when:** every endpoint has validation and cross-user isolation tests, and a user can enter a
 real semester through the UI.
@@ -64,13 +64,28 @@ Only after M6.
 | Manual browser journey on the real stack | Validation errors, register, reload keeps session, profile save, sign out, wrong password, sign in, mobile drawer |
 | Tests catch deliberately introduced bugs (refresh reuse, password echo, single-flight refresh) | Each caused failures |
 
-**Not verified:** the GitHub Actions workflow has not run, because nothing has been pushed.
+**CI:** the GitHub Actions workflow passed on its first run, for the M1 code.
+
+### M2 verification record (2026-11-10)
+
+| Check | Result |
+|-------|--------|
+| Backend tests against real PostgreSQL 17 | 255 passed |
+| Ruff lint and format, mypy strict | Clean |
+| Frontend tests (stubbed server) | 81 passed |
+| ESLint, TypeScript, production build | Clean |
+| Migration applied to the existing M1 database through Docker Compose | Passed |
+| Every private route rejects anonymous requests, using a route list read from the app | 25 routes |
+| Every record-by-ID route returns 404 to another user and leaves the record unchanged | 11 routes |
+| Removing the ownership check as a deliberate bug | 11 isolation tests failed, as they should |
+| Manual browser journey on the real stack, as a user in `Asia/Tokyo` | Course, exam with correct UTC deadline, progress logging, course totals, overlap error, weekly hours and commitment saved after reload |
 
 **Known gaps carried forward:**
 - Login rate limiting is not implemented (M6).
 - Docker images are for development. Production images are in M6.
-- Sidebar pages other than Dashboard and Settings are labeled "Not built yet".
-- There is no Playwright suite yet (M6). The browser journey above was run by hand.
+- The Schedule and Analytics pages are labeled "Not built yet". The dashboard has no data widgets until M5.
+- There is no Playwright suite yet (M6). The browser journeys above were run by hand.
+- Task and availability edits do not yet flag the schedule as stale (M4).
 - The scheduler package is an empty, boundary-tested placeholder (M3).
 - The schedule, timer, proposal and notification tables exist and their constraints are tested, but
   no API uses them yet.

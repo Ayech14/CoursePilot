@@ -257,6 +257,22 @@ def test_completed_task_requires_completion_time(db: Session) -> None:
         make_task(db, make_user(db), status=TaskStatus.COMPLETED)
 
 
+def test_completed_task_cannot_have_work_remaining(db: Session) -> None:
+    with pytest.raises(IntegrityError, match="ck_tasks_remaining_matches_status"):
+        make_task(
+            db,
+            make_user(db),
+            status=TaskStatus.COMPLETED,
+            completed_at=T0,
+            remaining_minutes=30,
+        )
+
+
+def test_unfinished_task_must_have_work_remaining(db: Session) -> None:
+    with pytest.raises(IntegrityError, match="ck_tasks_remaining_matches_status"):
+        make_task(db, make_user(db), remaining_minutes=0)
+
+
 def test_only_one_running_timer_per_user(db: Session) -> None:
     task = make_task(db, make_user(db))
     session = make_session(db, task, 0, 50)

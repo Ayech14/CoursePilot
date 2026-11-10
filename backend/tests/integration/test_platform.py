@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 from app.main import create_app
 
@@ -88,3 +89,17 @@ def test_access_log_omits_query_string(
     assert entry["path"] == "/health"
     assert entry["status"] == 200
     assert "private-value" not in json.dumps(entry)
+
+
+def test_database_race_returns_a_clean_conflict() -> None:
+    app = create_app()
+
+    @app.get("/race")
+    def race() -> None:
+        raise IntegrityError("INSERT", {}, Exception("duplicate key"))
+
+    response = TestClient(app, raise_server_exceptions=False).get("/race")
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "conflict"
+    assert "duplicate key" not in response.text

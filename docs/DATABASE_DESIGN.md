@@ -53,6 +53,9 @@ timestamps. `UNIQUE (id, user_id)` exists to be the target of composite foreign 
 (≥ 0), `priority` (1 low to 4 critical), `status` (`todo`, `in_progress`, `completed`),
 `completed_at`, timestamps.
 
+`status` and `remaining_minutes` must agree: a task is completed exactly when no work remains. A
+`CHECK` constraint enforces this.
+
 Single-table design: exams and assignments share nearly all columns and all scheduling behavior,
 so separate tables would duplicate them. For an exam, `deadline_at` is the exam's start.
 

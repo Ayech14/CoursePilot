@@ -24,22 +24,16 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/courses",
     label: "Courses",
     icon: GraduationCap,
-    plannedMilestone: 2,
-    plannedDescription: "Create courses, assign colors and follow progress per course.",
   },
   {
     to: "/tasks",
     label: "Tasks",
     icon: ListChecks,
-    plannedMilestone: 2,
-    plannedDescription: "Track assignments, projects, exams, readings and their remaining effort.",
   },
   {
     to: "/availability",
     label: "Availability",
     icon: CalendarClock,
-    plannedMilestone: 2,
-    plannedDescription: "Set your weekly study hours, session length, breaks and unavailable time.",
   },
   {
     to: "/schedule",

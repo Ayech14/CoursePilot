@@ -4,7 +4,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import health
-from app.api.v1 import auth, users
+from app.api.v1 import auth, availability, courses, tasks, users
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
@@ -32,6 +32,10 @@ def create_app() -> FastAPI:
     api_v1 = APIRouter(prefix="/api/v1")
     api_v1.include_router(auth.router)
     api_v1.include_router(users.router)
+    api_v1.include_router(courses.router)
+    api_v1.include_router(tasks.router)
+    api_v1.include_router(availability.router)
+    api_v1.include_router(availability.preferences_router)
     app.include_router(api_v1)
     app.include_router(health.router)
     return app
