@@ -32,6 +32,7 @@ from app.services.scheduling import (
     build_request,
     lock_user,
     session_read,
+    worked_minutes,
 )
 from scheduler.explain import describe_conflict, describe_warning
 from scheduler.models import PlanRequest
@@ -94,10 +95,11 @@ def _request_for(db: Session, user: User, now: datetime) -> PlanRequest:
     return build_request(db, user, now, active_future_sessions(db, user, now))
 
 
-def _read(db: Session, session: StudySession) -> SessionRead:
+def read_session(db: Session, session: StudySession, now: datetime) -> SessionRead:
     task = db.get_one(Task, session.task_id)
     course = None if task.course_id is None else db.get(Course, task.course_id)
-    return session_read(session, task, course)
+    worked = worked_minutes(db, [session.id], now).get(session.id, 0)
+    return session_read(session, task, course, worked)
 
 
 def check(db: Session, user: User, query: PlacementQuery, now: datetime) -> PlacementRead:
@@ -134,7 +136,7 @@ def create_session(db: Session, user: User, data: SessionCreate, now: datetime) 
     db.add(session)
     mark_schedule_inputs_changed(db, locked.id)
     db.commit()
-    return _read(db, session)
+    return read_session(db, session, now)
 
 
 def _editable(db: Session, user: User, session_id: uuid.UUID) -> StudySession:
@@ -163,15 +165,17 @@ def update_session(
     mark_schedule_inputs_changed(db, locked.id)
     db.commit()
     logger.info("session_moved", extra={"user_id": str(locked.id), "session_id": str(session.id)})
-    return _read(db, session)
+    return read_session(db, session, now)
 
 
-def set_locked(db: Session, user: User, session_id: uuid.UUID, *, locked: bool) -> SessionRead:
+def set_locked(
+    db: Session, user: User, session_id: uuid.UUID, now: datetime, *, locked: bool
+) -> SessionRead:
     session = _editable(db, user, session_id)
     session.is_locked = locked
     mark_schedule_inputs_changed(db, user.id)
     db.commit()
-    return _read(db, session)
+    return read_session(db, session, now)
 
 
 def delete_session(db: Session, user: User, session_id: uuid.UUID) -> None:

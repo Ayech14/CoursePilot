@@ -51,7 +51,9 @@ For each **local date** in the horizon:
 4. Cut what remains into **slots** of the preferred length, separated by the preferred break.
    Remainders shorter than the minimum session length are discarded.
 
-The day's budget is `max_daily_minutes` minus pinned minutes on that date. Days are local dates, so a
+The day's budget is `max_daily_minutes` minus pinned minutes on that date. Today's budget also loses
+`studied_today_minutes`, the time timed on sessions already finished today, because those no longer
+have a slot to count. Days are local dates, so a
 session is attributed to the day the student experiences it.
 
 **Daylight saving rules** (these get dedicated tests):

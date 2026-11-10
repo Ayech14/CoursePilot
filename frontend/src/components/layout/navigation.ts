@@ -13,9 +13,6 @@ export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
-  /** Set while the page is unbuilt. The sidebar and the page both show this honestly. */
-  plannedMilestone?: number;
-  plannedDescription?: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -44,8 +41,6 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/analytics",
     label: "Analytics",
     icon: ChartColumn,
-    plannedMilestone: 5,
-    plannedDescription: "See study hours, workload and estimated versus actual time.",
   },
   { to: "/settings", label: "Settings", icon: Settings },
 ];

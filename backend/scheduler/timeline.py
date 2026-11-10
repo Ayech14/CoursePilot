@@ -164,6 +164,10 @@ def build_timeline(request: PlanRequest) -> Timeline:
             minutes = int((session.end - session.start).total_seconds() // 60)
             budgets[index] = max(budgets[index] - minutes, 0)
 
+    today = (request.now.astimezone(zone).date() - first_day).days
+    if 0 <= today < day_count:
+        budgets[today] = max(budgets[today] - request.studied_today_minutes, 0)
+
     preferred = timedelta(minutes=preferences.preferred_session_minutes)
     minimum = timedelta(minutes=preferences.min_session_minutes)
 

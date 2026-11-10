@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatClock,
   formatDuration,
+  formatElapsed,
   hoursToMinutes,
   isoToLocalInput,
   localInputToIso,
@@ -25,10 +26,10 @@ describe("localInputToIso", () => {
     expect(localInputToIso("", "UTC")).toBeNull();
   });
 
-  it("moves a time skipped by spring-forward to a real instant", () => {
+  it("moves a time skipped by spring-forward to the moment the clocks changed", () => {
     // 02:30 did not exist in Toronto on 2026-03-08.
     const iso = localInputToIso("2026-03-08T02:30", "America/Toronto")!;
-    expect(isoToLocalInput(iso, "America/Toronto")).toBe("2026-03-08T03:30");
+    expect(isoToLocalInput(iso, "America/Toronto")).toBe("2026-03-08T03:00");
   });
 
   it("uses the first occurrence of a time repeated by fall-back", () => {
@@ -103,5 +104,31 @@ describe("effort conversion", () => {
   it("formats minutes as hours", () => {
     expect(minutesToHours(90)).toBe("1.5");
     expect(minutesToHours(100)).toBe("1.67");
+  });
+});
+
+describe("clock changes", () => {
+  const TORONTO = "America/Toronto";
+
+  it("reads a time that does not exist as the moment the clocks changed", () => {
+    expect(localInputToIso("2027-03-14T02:30", TORONTO)).toBe("2027-03-14T07:00:00.000Z");
+    expect(localInputToIso("2027-03-14T02:00", TORONTO)).toBe("2027-03-14T07:00:00.000Z");
+  });
+
+  it("leaves the minutes around the gap alone", () => {
+    expect(localInputToIso("2027-03-14T01:59", TORONTO)).toBe("2027-03-14T06:59:00.000Z");
+    expect(localInputToIso("2027-03-14T03:00", TORONTO)).toBe("2027-03-14T07:00:00.000Z");
+  });
+});
+
+describe("formatElapsed", () => {
+  it.each([
+    [0, "00:00"],
+    [59.9, "00:59"],
+    [600, "10:00"],
+    [3661, "1:01:01"],
+    [-5, "00:00"],
+  ])("shows %s seconds as %s", (seconds, text) => {
+    expect(formatElapsed(seconds)).toBe(text);
   });
 });

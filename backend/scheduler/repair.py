@@ -133,6 +133,9 @@ class _Repair:
     ) -> list[ExistingSession]:
         """Preferences may have changed since these were planned. Earlier sessions win."""
         day_totals: dict[object, int] = defaultdict(int)
+        day_totals[self.request.now.astimezone(self.zone).date()] = (
+            self.request.studied_today_minutes
+        )
         for session in (*self.locked, *self.sticky):
             day_totals[session.start.astimezone(self.zone).date()] += _minutes(session)
 

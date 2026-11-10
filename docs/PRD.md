@@ -144,6 +144,11 @@ it rises as later milestones build on it.
 | 10d | Are tasks in archived courses scheduled? | No. | Archiving means the course is over. |
 | 10a | Does logging the full estimate finish a task? | No. It keeps at least 15 minutes remaining until the student marks it finished or sets remaining effort to zero. | Time spent is not proof the work is done, and a task that runs long is an expected case. |
 | 10b | Can tasks be added to an archived course? | No. Existing tasks keep their course. | Archiving means the course is over. |
+| 10e | How many sessions can be open at once? | One, running or paused. | The database allows one running timer. Also limiting paused ones means no forgotten timer sits out of sight. |
+| 10f | When can a session be started? | Any time on its local day, or later until it counts as missed. | Starting a little early is normal. Starting next week's session is a mistake. |
+| 10g | What about a timer left running? | At finish the student can lower the time, but not raise it above what was timed. Lowering trims the work intervals. | Timed figures stay trustworthy. Untimed work has its own "log progress" action on the task. |
+| 10h | Do hours logged by hand appear in weekly charts? | No. They count toward a task's actual time and the estimate comparison, but have no date. Charts say "timed sessions". | Inventing a date for them would make the weekly figures untrue. |
+| 10i | When does a week start? | Monday, in the student's time zone. | Matches the availability grid. A preference can be added if anyone needs one. |
 | 10 | What if the work cannot fit? | Plan as much as possible and report which tasks are at risk and by how many minutes. | An honest "this will not fit" is the most useful output in an overloaded week. |
 
 ## 7. Open questions for the project owner

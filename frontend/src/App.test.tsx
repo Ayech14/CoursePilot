@@ -9,6 +9,17 @@ import { AuthProvider } from "./features/auth/AuthContext";
 import { ADA, callsTo, errorResponse, jsonResponse, session, stubFetch } from "./test/fakeServer";
 
 const REFRESH = "/api/v1/auth/refresh";
+const DASHBOARD = "/api/v1/dashboard";
+const EMPTY_DASHBOARD = {
+  today: [],
+  upcoming_assignments: [],
+  upcoming_exams: [],
+  attention: [],
+  attention_total: 0,
+  week: { week_start: "2026-11-16", studied_minutes: 0, planned_minutes: 0 },
+  tasks: { completed: 0, remaining: 0, overdue: 0 },
+  workload: [],
+};
 
 function renderApp(path: string) {
   return render(
@@ -38,7 +49,7 @@ describe("routing", () => {
   });
 
   it("does not show invented figures on the dashboard", async () => {
-    stubFetch(() => jsonResponse(200, session()));
+    stubFetch((url) => (url === DASHBOARD ? jsonResponse(200, EMPTY_DASHBOARD) : jsonResponse(200, session())));
     renderApp("/dashboard");
     expect(await screen.findByText("Nothing to show yet")).toBeInTheDocument();
   });
@@ -47,13 +58,6 @@ describe("routing", () => {
     stubFetch(() => jsonResponse(200, session()));
     renderApp("/login");
     expect(await screen.findByRole("heading", { name: /Ada$/ })).toBeInTheDocument();
-  });
-
-  it("labels unbuilt pages as not built", async () => {
-    stubFetch(() => jsonResponse(200, session()));
-    renderApp("/analytics");
-    expect(await screen.findByText("Not built yet")).toBeInTheDocument();
-    expect(screen.getByText("Planned for Milestone 5")).toBeInTheDocument();
   });
 
   it("shows a not found page for unknown paths", async () => {
@@ -134,7 +138,9 @@ describe("registration", () => {
 describe("signed-in actions", () => {
   it("signs out and returns to the login page", async () => {
     stubFetch((url) =>
-      url === "/api/v1/auth/logout" ? new Response(null, { status: 204 }) : jsonResponse(200, session()),
+      url === "/api/v1/auth/logout"
+        ? new Response(null, { status: 204 })
+        : jsonResponse(200, url === DASHBOARD ? EMPTY_DASHBOARD : session()),
     );
     renderApp("/dashboard");
     const user = userEvent.setup();

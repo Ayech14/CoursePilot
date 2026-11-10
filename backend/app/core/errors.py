@@ -104,6 +104,24 @@ class SessionNotEditableError(AppError):
     message = "Only sessions that have not started can be changed."
 
 
+class TimerActiveError(AppError):
+    status_code = 409
+    code = "timer_active"
+    message = "You already have a session open. Finish or discard it first."
+
+
+class TimerStateError(AppError):
+    status_code = 409
+    code = "timer_state"
+    message = "This session cannot do that right now. Refresh and try again."
+
+
+class SessionNotStartableError(AppError):
+    status_code = 409
+    code = "session_not_today"
+    message = "Only today's sessions can be started."
+
+
 class SessionConflictError(AppError):
     status_code = 409
     code = "session_conflict"

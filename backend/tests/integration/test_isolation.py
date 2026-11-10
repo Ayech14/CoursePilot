@@ -61,6 +61,11 @@ ID_ROUTES: dict[tuple[str, str], dict[str, Any] | None] = {
     ("DELETE", "/sessions/{session_id}"): None,
     ("POST", "/sessions/{session_id}/lock"): None,
     ("POST", "/sessions/{session_id}/unlock"): None,
+    ("POST", "/sessions/{session_id}/start"): None,
+    ("POST", "/sessions/{session_id}/pause"): None,
+    ("POST", "/sessions/{session_id}/resume"): None,
+    ("POST", "/sessions/{session_id}/finish"): None,
+    ("POST", "/sessions/{session_id}/discard"): None,
 }
 
 

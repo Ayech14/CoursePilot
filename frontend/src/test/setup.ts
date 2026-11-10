@@ -6,6 +6,7 @@ import { setAccessToken } from "../lib/api";
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   setAccessToken(null);
   vi.unstubAllGlobals();
 });

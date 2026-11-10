@@ -12,8 +12,19 @@ export function localInputToIso(value: string, zone: string): string | null {
   const parsed = DateTime.fromISO(value, { zone });
   if (!parsed.isValid) return null;
   // When clocks go back an hour repeats. Use its first occurrence, as the scheduler does.
-  const earliest = DateTime.min(parsed, ...parsed.getPossibleOffsets());
-  return earliest!.toUTC().toISO();
+  const earliest = DateTime.min(parsed, ...parsed.getPossibleOffsets())!;
+  return firstValidInstant(earliest, value, zone).toUTC().toISO();
+}
+
+/** When clocks go forward a time may not exist. Use the moment the clocks changed, as the scheduler does. */
+function firstValidInstant(resolved: DateTime, value: string, zone: string): DateTime {
+  const asWritten = DateTime.fromISO(value, { zone: "utc" });
+  if (resolved.hour === asWritten.hour && resolved.minute === asWritten.minute) return resolved;
+  let instant = resolved;
+  while (instant.minus({ minutes: 1 }).setZone(zone).offset === resolved.offset) {
+    instant = instant.minus({ minutes: 1 });
+  }
+  return instant;
 }
 
 export function isoToLocalInput(iso: string | null, zone: string): string {
@@ -24,6 +35,10 @@ export function formatDateTime(iso: string, zone: string): string {
   const value = DateTime.fromISO(iso, { zone });
   const sameYear = value.year === DateTime.now().setZone(zone).year;
   return value.toFormat(sameYear ? "ccc, LLL d, h:mm a" : "ccc, LLL d yyyy, h:mm a");
+}
+
+export function formatShortDate(iso: string, zone?: string): string {
+  return DateTime.fromISO(iso, zone ? { zone } : undefined).toFormat("LLL d");
 }
 
 export function formatDayHeading(iso: string, zone: string): string {
@@ -58,6 +73,18 @@ export function groupByLocalDay<T>(
 /** A UTC ISO instant the given number of minutes after another. */
 export function addMinutes(iso: string, minutes: number): string {
   return DateTime.fromISO(iso).plus({ minutes }).toUTC().toISO()!;
+}
+
+/** Whether a session falls on today, or earlier, on the student's own calendar. */
+export function isTodayOrEarlier(iso: string, zone: string): boolean {
+  return DateTime.fromISO(iso, { zone }).startOf("day") <= DateTime.now().setZone(zone).startOf("day");
+}
+
+export function formatElapsed(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const clock = `${pad(Math.floor((seconds % 3600) / 60))}:${pad(seconds % 60)}`;
+  return hours > 0 ? `${hours}:${clock}` : clock;
 }
 
 export function isPast(iso: string): boolean {

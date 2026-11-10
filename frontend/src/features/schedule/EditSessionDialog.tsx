@@ -17,11 +17,15 @@ interface Props {
   session: StudySession;
   zone: string;
   onClose: () => void;
+  /** A drag the server refused or wants confirmed. The dialog opens on that time, with the reasons. */
+  attempt?: { start_at: string; end_at: string; placement: Placement };
 }
 
-export function EditSessionDialog({ session, zone, onClose }: Props) {
-  const [start, setStart] = useState(isoToLocalInput(session.start_at, zone));
-  const [minutes, setMinutes] = useState(String(minutesBetween(session.start_at, session.end_at)));
+export function EditSessionDialog({ session, zone, onClose, attempt }: Props) {
+  const initial = attempt ?? session;
+  const [start, setStart] = useState(isoToLocalInput(initial.start_at, zone));
+  const [minutes, setMinutes] = useState(String(minutesBetween(initial.start_at, initial.end_at)));
+  const [attemptPlacement, setAttemptPlacement] = useState(attempt?.placement ?? null);
   const move = useMoveSession();
   const [localError, setLocalError] = useState<string>();
 
@@ -29,8 +33,13 @@ export function EditSessionDialog({ session, zone, onClose }: Props) {
   const placement =
     move.error?.code === "session_conflict" || move.error?.code === "placement_warnings"
       ? (move.error.details as Placement)
-      : null;
-  const needsConfirmation = move.error?.code === "placement_warnings";
+      : attemptPlacement;
+  const needsConfirmation = placement !== null && placement.conflicts.length === 0;
+
+  function clearResult() {
+    move.reset();
+    setAttemptPlacement(null);
+  }
 
   function submit(acknowledge: boolean) {
     const startIso = localInputToIso(start, zone);
@@ -44,6 +53,7 @@ export function EditSessionDialog({ session, zone, onClose }: Props) {
       return;
     }
     setLocalError(undefined);
+    setAttemptPlacement(null);
     move.mutate(
       {
         id: session.id,
@@ -63,7 +73,7 @@ export function EditSessionDialog({ session, zone, onClose }: Props) {
   function chooseAlternative(alternative: { start_at: string; end_at: string }) {
     setStart(isoToLocalInput(alternative.start_at, zone));
     setMinutes(String(minutesBetween(alternative.start_at, alternative.end_at)));
-    move.reset();
+    clearResult();
   }
 
   const fieldErrors = move.error?.fieldErrors ?? {};
@@ -78,7 +88,7 @@ export function EditSessionDialog({ session, zone, onClose }: Props) {
           value={start}
           onChange={(e) => {
             setStart(e.target.value);
-            move.reset();
+            clearResult();
           }}
           error={localError ?? fieldErrors.start_at}
           hint={`In your time zone, ${zone}.`}
@@ -91,7 +101,7 @@ export function EditSessionDialog({ session, zone, onClose }: Props) {
           value={minutes}
           onChange={(e) => {
             setMinutes(e.target.value);
-            move.reset();
+            clearResult();
           }}
           error={fieldErrors.end_at}
         />

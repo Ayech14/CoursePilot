@@ -9,6 +9,7 @@ from pydantic import AwareDatetime
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.schedule import (
+    ActiveTimerRead,
     ApplyRequest,
     ApplyResult,
     PlacementQuery,
@@ -19,9 +20,11 @@ from app.schemas.schedule import (
     SessionCreate,
     SessionRead,
     SessionUpdate,
+    TimerFinish,
 )
 from app.services import scheduling as service
 from app.services import sessions as session_service
+from app.services import timer as timer_service
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
 sessions_router = APIRouter(prefix="/sessions", tags=["schedule"])
@@ -102,13 +105,57 @@ def update_session(
 
 
 @sessions_router.post("/{session_id}/lock")
-def lock_session(session_id: uuid.UUID, user: CurrentUser, db: DbSession) -> SessionRead:
-    return session_service.set_locked(db, user, session_id, locked=True)
+def lock_session(session_id: uuid.UUID, user: CurrentUser, db: DbSession, now: Now) -> SessionRead:
+    return session_service.set_locked(db, user, session_id, now, locked=True)
 
 
 @sessions_router.post("/{session_id}/unlock")
-def unlock_session(session_id: uuid.UUID, user: CurrentUser, db: DbSession) -> SessionRead:
-    return session_service.set_locked(db, user, session_id, locked=False)
+def unlock_session(
+    session_id: uuid.UUID, user: CurrentUser, db: DbSession, now: Now
+) -> SessionRead:
+    return session_service.set_locked(db, user, session_id, now, locked=False)
+
+
+@sessions_router.get("/active")
+def active_timer(user: CurrentUser, db: DbSession, now: Now) -> ActiveTimerRead | None:
+    return timer_service.get_active(db, user, now)
+
+
+@sessions_router.post("/{session_id}/start")
+def start_timer(
+    session_id: uuid.UUID, user: CurrentUser, db: DbSession, now: Now
+) -> ActiveTimerRead:
+    return timer_service.start(db, user, session_id, now)
+
+
+@sessions_router.post("/{session_id}/pause")
+def pause_timer(
+    session_id: uuid.UUID, user: CurrentUser, db: DbSession, now: Now
+) -> ActiveTimerRead:
+    return timer_service.pause(db, user, session_id, now)
+
+
+@sessions_router.post("/{session_id}/resume")
+def resume_timer(
+    session_id: uuid.UUID, user: CurrentUser, db: DbSession, now: Now
+) -> ActiveTimerRead:
+    return timer_service.resume(db, user, session_id, now)
+
+
+@sessions_router.post("/{session_id}/finish")
+def finish_timer(
+    session_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+    now: Now,
+    outcome: TimerFinish = TimerFinish(),
+) -> SessionRead:
+    return timer_service.finish(db, user, session_id, outcome, now)
+
+
+@sessions_router.post("/{session_id}/discard", status_code=status.HTTP_204_NO_CONTENT)
+def discard_timer(session_id: uuid.UUID, user: CurrentUser, db: DbSession) -> None:
+    timer_service.discard(db, user, session_id)
 
 
 @sessions_router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

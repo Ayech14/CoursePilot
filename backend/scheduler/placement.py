@@ -106,6 +106,8 @@ def check_placement(
     day_total = _minutes(start, end) + sum(
         _minutes(s.start, s.end) for s in others if s.start.astimezone(zone).date() == day
     )
+    if day == request.now.astimezone(zone).date():
+        day_total += request.studied_today_minutes
     if day_total > request.preferences.max_daily_minutes:
         warnings.append(WarningKind.DAILY_LIMIT)
 
@@ -147,7 +149,9 @@ def suggest_slots(
         ]
     )
 
-    day_minutes: dict[object, int] = {}
+    day_minutes: dict[object, int] = {
+        request.now.astimezone(zone).date(): request.studied_today_minutes
+    }
     for session in others:
         day = session.start.astimezone(zone).date()
         day_minutes[day] = day_minutes.get(day, 0) + _minutes(session.start, session.end)

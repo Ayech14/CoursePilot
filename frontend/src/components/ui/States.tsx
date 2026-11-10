@@ -47,6 +47,15 @@ export function EmptyState({
   );
 }
 
+export function LoadingBlock() {
+  return (
+    <div role="status" className="flex justify-center py-16 text-ink-muted">
+      <Spinner />
+      <span className="sr-only">Loading</span>
+    </div>
+  );
+}
+
 /** Standard loading and failure handling for anything that displays fetched data. */
 export function QueryState<T>({
   query,
@@ -55,14 +64,7 @@ export function QueryState<T>({
   query: UseQueryResult<T, ApiError>;
   children: (data: T) => ReactNode;
 }) {
-  if (query.isPending) {
-    return (
-      <div role="status" className="flex justify-center py-16 text-ink-muted">
-        <Spinner />
-        <span className="sr-only">Loading</span>
-      </div>
-    );
-  }
+  if (query.isPending) return <LoadingBlock />;
   if (query.isError) {
     return (
       <div role="alert" className="rounded-xl border border-line bg-surface px-6 py-10 text-center">

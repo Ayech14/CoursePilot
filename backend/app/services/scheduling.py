@@ -6,9 +6,11 @@ output as a proposal, and applies a proposal exactly as the student previewed it
 
 import logging
 import uuid
+from collections import defaultdict
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +28,7 @@ from app.models import (
     StudySession,
     Task,
     User,
+    WorkInterval,
 )
 from app.models.enums import (
     ChangeAction,
@@ -64,10 +67,11 @@ from scheduler.models import (
     WeeklyTime,
 )
 from scheduler.repair import rebuild, repair
+from scheduler.timeline import local_to_utc
 
 logger = logging.getLogger(__name__)
 
-_ACTIVE = (SessionStatus.PLANNED, SessionStatus.IN_PROGRESS, SessionStatus.PAUSED)
+ACTIVE_STATUSES = (SessionStatus.PLANNED, SessionStatus.IN_PROGRESS, SessionStatus.PAUSED)
 _MAX_LISTED_SESSIONS = 1000
 # A planned session this long past its end, and never started, counts as missed.
 _MISSED_GRACE = timedelta(minutes=30)
@@ -88,7 +92,7 @@ def active_future_sessions(db: Session, user: User, now: datetime) -> list[Study
         db.scalars(
             select(StudySession).where(
                 StudySession.user_id == user.id,
-                StudySession.status.in_(_ACTIVE),
+                StudySession.status.in_(ACTIVE_STATUSES),
                 StudySession.end_at > now,
             )
         )
@@ -132,6 +136,7 @@ def build_request(
             WeeklyTime(b.day_of_week, b.start_minute, b.end_minute) for b in weekly
         ),
         one_off_blocks=tuple(Interval(b.start_at, b.end_at) for b in one_off),
+        studied_today_minutes=_studied_today_minutes(db, user, now),
         preferences=Preferences(
             preferred_session_minutes=preferences.preferred_session_minutes,
             min_session_minutes=preferences.min_session_minutes,
@@ -146,6 +151,52 @@ def build_request(
             for s in sessions
         ),
     )
+
+
+def local_day_bounds(day: date, zone: ZoneInfo) -> tuple[datetime, datetime]:
+    """The real instants a local date runs between. It need not be 24 hours long."""
+    return local_to_utc(day, 0, zone), local_to_utc(day + timedelta(days=1), 0, zone)
+
+
+def _studied_today_minutes(db: Session, user: User, now: datetime) -> int:
+    """Timed work on finished sessions. Open sessions already count through their planned slot."""
+    zone = ZoneInfo(user.timezone)
+    day_start, day_end = local_day_bounds(now.astimezone(zone).date(), zone)
+    rows = db.execute(
+        select(WorkInterval.started_at, WorkInterval.ended_at)
+        .join(StudySession, WorkInterval.session_id == StudySession.id)
+        .where(
+            WorkInterval.user_id == user.id,
+            StudySession.status == SessionStatus.COMPLETED,
+            WorkInterval.started_at < day_end,
+            WorkInterval.ended_at > day_start,
+        )
+    ).all()
+    seconds = sum(
+        (min(ended, day_end) - max(started, day_start)).total_seconds() for started, ended in rows
+    )
+    return rounded_minutes(seconds)
+
+
+def rounded_minutes(seconds: float) -> int:
+    return int((seconds + 30) // 60)
+
+
+def worked_minutes(
+    db: Session, session_ids: Sequence[uuid.UUID], now: datetime
+) -> dict[uuid.UUID, int]:
+    """Timed work on each session, counting a timer that is still running."""
+    if not session_ids:
+        return {}
+    rows = db.execute(
+        select(WorkInterval.session_id, WorkInterval.started_at, WorkInterval.ended_at).where(
+            WorkInterval.session_id.in_(session_ids)
+        )
+    ).all()
+    seconds: dict[uuid.UUID, float] = defaultdict(float)
+    for session_id, started, ended in rows:
+        seconds[session_id] += ((ended or now) - started).total_seconds()
+    return {session_id: rounded_minutes(total) for session_id, total in seconds.items()}
 
 
 def _explanation_json(explanation: Explanation) -> dict[str, Any]:
@@ -509,7 +560,9 @@ def reject_proposal(db: Session, user: User, proposal_id: uuid.UUID, now: dateti
     db.commit()
 
 
-def session_read(session: StudySession, task: Task, course: Course | None) -> SessionRead:
+def session_read(
+    session: StudySession, task: Task, course: Course | None, actual_minutes: int = 0
+) -> SessionRead:
     return SessionRead(
         id=session.id,
         task_id=session.task_id,
@@ -525,6 +578,7 @@ def session_read(session: StudySession, task: Task, course: Course | None) -> Se
             session.origin == SessionOrigin.MANUAL or session.user_modified_at is not None
         ),
         explanation=_explanation_text(session.explanation),
+        actual_minutes=actual_minutes,
     )
 
 
@@ -545,7 +599,11 @@ def list_sessions(
         .order_by(StudySession.start_at)
         .limit(_MAX_LISTED_SESSIONS)
     ).all()
-    return [session_read(session, task, course) for session, task, course in rows]
+    worked = worked_minutes(db, [row[0].id for row in rows], now)
+    return [
+        session_read(session, task, course, worked.get(session.id, 0))
+        for session, task, course in rows
+    ]
 
 
 def utc_now() -> datetime:

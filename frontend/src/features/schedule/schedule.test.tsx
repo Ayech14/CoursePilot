@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   ADA,
@@ -62,6 +62,7 @@ const SESSION = {
   start_at: "2026-11-16T14:00:00Z",
   end_at: "2026-11-16T14:50:00Z",
   status: "planned",
+  actual_minutes: 0,
   explanation: "You marked this as important, so it goes ahead of less important work.",
 };
 
@@ -70,6 +71,9 @@ const noSessions = () => jsonResponse(200, []);
 const review = () => within(screen.getByRole("region", { name: "Proposed schedule" }));
 
 describe("schedule", () => {
+  // The calendar has its own tests. These cover the list, with the same data and actions.
+  beforeEach(() => localStorage.setItem("coursepilot.schedule.view", "list"));
+
   it("explains what to do when nothing is planned", async () => {
     stubApi({ "GET /schedule/proposals/current": none, "GET /sessions": noSessions });
     renderApp("/schedule");

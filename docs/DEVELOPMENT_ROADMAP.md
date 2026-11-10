@@ -35,7 +35,7 @@ resize, lock, conflict detection, alternatives. F1–F3, J1–J8 (API).
 **Done when:** each event type in the design has a test showing minimal change, and locked sessions
 never move.
 
-### M5: Calendar, Dashboard, Tracking, Analytics — Not started
+### M5: Calendar, Dashboard, Tracking, Analytics — Done
 Calendar with drag and resize, proposal review screen, study timer, dashboard, charts. A1–A5, G1–G3,
 H1–H2, J1–J2 (UI). Begins with a short spike on calendar time zone behavior.
 **Done when:** all figures trace to real data, with loading, empty and error states on every screen.
@@ -115,14 +115,30 @@ removed every other task's early-finish margin.
 The generated scenarios found two real bugs during development: repeated updates kept adding sessions
 for open-ended work, and a session could be both shortened and removed in one proposal.
 
+### M5 verification record (2026-11-10)
+
+| Check | Result |
+|-------|--------|
+| Backend tests against real PostgreSQL 17, also inside the Docker image | 5054 passed, 99% coverage |
+| Ruff lint and format, mypy strict | Clean |
+| Frontend tests (stubbed server), lint, types, production build | 150 passed, clean |
+| Every new route rejects anonymous requests and returns 404 to another user | Covered by the isolation tests, which read routes from the app |
+| Figures trace to records | Each dashboard and analytics figure is asserted against records the test created; a new account returns zeros |
+| Local days and weeks | Work is split at local midnight, including across a week boundary and the 25-hour day |
+| Real FullCalendar conversion at clock changes | Contract test on the repeated hour and the skipped hour |
+| Deliberately introduced bugs (4 in the timer, 5 in analytics, 1 in the daily limit) | Each caused failures |
+| Manual browser journey on the real stack | Real mouse drag and resize; a refused drop put the session back and offered times; a drop on a 2:30 AM that does not exist saved as 3:00 AM; timer survived a reload and held while paused; finished time reached the dashboard and charts; a Tokyo profile in a Toronto browser showed Tokyo times; phone layout has no sideways scroll |
+
+The spike found that FullCalendar's time conversion contradicts our rules at clock changes, which is
+why the calendar converts dropped times itself. See `ARCHITECTURE.md` section 8.
+
 **Known gaps carried forward:**
 - Login rate limiting is not implemented (M6).
 - Docker images are for development. Production images are in M6.
-- The Analytics page is labeled "Not built yet". The dashboard has no data widgets until M5.
-- The schedule is a list with a form for moving sessions. Drag and drop arrives with the calendar (M5).
 - Missed sessions are detected when the schedule is opened, not at the moment they are missed (by design; see `PRD.md`).
-- A session running now has no timer yet, so it cannot be marked as started (M5).
 - There is no Playwright suite yet (M6). The browser journeys above were run by hand.
-- Time already studied today does not count toward the daily limit until the timer exists (M5).
+- Touch dragging on a real phone has not been tested. The list view and the Change form work without dragging.
+- A timer running past its planned end does not reserve the time after it, so a new plan could schedule a session during the overrun.
+- Deleting a task also deletes its study history, so past charts lose that time.
 - Scoring weights are reasoned starting values and have not been tuned against data (M7).
-- The timer and notification tables exist and their constraints are tested, but no API uses them yet.
+- The notification table exists and its constraints are tested, but no API uses it yet (M6).

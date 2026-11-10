@@ -3,10 +3,11 @@
 An academic planning platform that turns courses, deadlines and weekly availability into a realistic
 study schedule, and adapts that schedule when plans change.
 
-> **Status: Milestone 4 of 6 complete.** Students can enter their semester, generate an explained
-> study schedule, adapt it with minimal changes when plans shift, and move, resize or lock sessions.
-> The calendar, study timer, dashboard and analytics are not built yet. See
-> [the roadmap](docs/DEVELOPMENT_ROADMAP.md) for exactly what is done and verified.
+> **Status: Milestone 5 of 6 complete.** Students can enter their semester, generate an explained
+> study schedule, adapt it with minimal changes, drag and resize sessions on a calendar, time their
+> study, and see a dashboard and analytics built from their own records. Notifications and production
+> deployment are not built yet. See [the roadmap](docs/DEVELOPMENT_ROADMAP.md) for exactly what is
+> done and verified.
 
 **Stack:** React, TypeScript, Vite, Tailwind CSS · FastAPI, Pydantic, SQLAlchemy · PostgreSQL, Alembic ·
 Docker Compose, GitHub Actions

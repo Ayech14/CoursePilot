@@ -18,7 +18,7 @@ from app.schemas.common import Page
 from app.schemas.task import TaskCreate, TaskProgress, TaskRead, TaskUpdate
 from app.services.common import get_owned, mark_schedule_inputs_changed
 
-_EXAM_TYPES = frozenset({TaskType.MIDTERM, TaskType.FINAL_EXAM, TaskType.QUIZ})
+EXAM_TYPES = frozenset({TaskType.MIDTERM, TaskType.FINAL_EXAM, TaskType.QUIZ})
 
 # Work assumed to be left on an unfinished task whose effort would otherwise compute as zero.
 MINIMUM_UNFINISHED_MINUTES = 15
@@ -44,14 +44,14 @@ def _check_course(db: Session, user: User, course_id: uuid.UUID) -> None:
 
 
 def _check_exam_has_date(task: Task) -> None:
-    if task.task_type in _EXAM_TYPES and task.deadline_at is None:
+    if task.task_type in EXAM_TYPES and task.deadline_at is None:
         raise InvalidFieldsError({"deadline_at": "An exam or quiz needs a date."})
 
 
-def _complete(task: Task) -> None:
+def _complete(task: Task, now: datetime | None = None) -> None:
     task.status = TaskStatus.COMPLETED
     task.remaining_minutes = 0
-    task.completed_at = task.completed_at or datetime.now(UTC)
+    task.completed_at = task.completed_at or now or datetime.now(UTC)
 
 
 def list_tasks(db: Session, user: User, filters: TaskFilters) -> Page[TaskRead]:
@@ -144,6 +144,31 @@ def _apply_state_change(task: Task, status: TaskStatus | None, remaining: int | 
     task.completed_at = None
 
 
+def apply_work(
+    task: Task,
+    *,
+    minutes_spent: int | None,
+    remaining: int | None,
+    mark_completed: bool,
+    now: datetime | None = None,
+) -> None:
+    """The one place that decides what time spent means for a task."""
+    if minutes_spent:
+        task.actual_minutes += minutes_spent
+
+    if mark_completed or remaining == 0:
+        _complete(task, now)
+        return
+    if remaining is not None:
+        task.remaining_minutes = remaining
+    elif minutes_spent:
+        # Spending the estimate does not mean the work is done. Only the student decides that.
+        task.remaining_minutes = max(
+            task.remaining_minutes - minutes_spent, MINIMUM_UNFINISHED_MINUTES
+        )
+    task.status = TaskStatus.IN_PROGRESS
+
+
 def record_progress(db: Session, user: User, task_id: uuid.UUID, progress: TaskProgress) -> Task:
     task = get_owned(db, Task, task_id, user.id)
     if task.status == TaskStatus.COMPLETED:
@@ -157,21 +182,12 @@ def record_progress(db: Session, user: User, task_id: uuid.UUID, progress: TaskP
             {"minutes_spent": "Enter time spent or time remaining, or mark the task complete."}
         )
 
-    if progress.minutes_spent:
-        task.actual_minutes += progress.minutes_spent
-
-    if progress.mark_completed or progress.remaining_minutes == 0:
-        _complete(task)
-    else:
-        if progress.remaining_minutes is not None:
-            task.remaining_minutes = progress.remaining_minutes
-        elif progress.minutes_spent:
-            # Spending the estimate does not mean the work is done. Only the student decides that.
-            task.remaining_minutes = max(
-                task.remaining_minutes - progress.minutes_spent, MINIMUM_UNFINISHED_MINUTES
-            )
-        task.status = TaskStatus.IN_PROGRESS
-
+    apply_work(
+        task,
+        minutes_spent=progress.minutes_spent,
+        remaining=progress.remaining_minutes,
+        mark_completed=progress.mark_completed,
+    )
     mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return task

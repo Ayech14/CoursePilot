@@ -30,6 +30,13 @@ type Handler = (url: string, init: RequestInit) => Response | Promise<Response>;
 
 /** Replace global fetch. The handler receives the path, e.g. "/api/v1/users/me". */
 export function stubFetch(handler: Handler) {
+  // The timer bar asks this on every page. Tests that are about the timer stub it through stubApi.
+  const withTimer: Handler = (url, init) =>
+    url === "/api/v1/sessions/active" ? jsonResponse(200, null) : handler(url, init);
+  return install(withTimer);
+}
+
+function install(handler: Handler) {
   const mock = vi.fn((url: string, init: RequestInit) => Promise.resolve(handler(url, init)));
   vi.stubGlobal("fetch", mock);
   return mock;
@@ -44,9 +51,10 @@ type RouteHandler = (body: any, url: string) => Response;
 
 /** Stub the API by "METHOD /path". The session refresh succeeds unless a route overrides it. */
 export function stubApi(routes: Record<string, RouteHandler>) {
-  return stubFetch((url, init) => {
+  return install((url, init) => {
     const key = `${init.method ?? "GET"} ${url.replace("/api/v1", "").split("?")[0]}`;
     if (key === "POST /auth/refresh" && !routes[key]) return jsonResponse(200, session());
+    if (key === "GET /sessions/active" && !routes[key]) return jsonResponse(200, null);
     const handler = routes[key];
     if (!handler) return errorResponse(404, "not_found", `No stub for ${key}`);
     return handler(init.body ? JSON.parse(init.body as string) : undefined, url);

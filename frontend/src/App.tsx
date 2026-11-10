@@ -1,7 +1,8 @@
+import { lazy, Suspense } from "react";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/layout/AppShell";
-import { NAV_ITEMS } from "./components/layout/navigation";
+import { LoadingBlock } from "./components/ui/States";
 import { AvailabilityPage } from "./features/availability/AvailabilityPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { RegisterPage } from "./features/auth/RegisterPage";
@@ -9,10 +10,14 @@ import { AnonymousOnly, RequireAuth } from "./features/auth/routeGuards";
 import { CourseDetailPage } from "./features/courses/CourseDetailPage";
 import { CoursesPage } from "./features/courses/CoursesPage";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
-import { PlannedPage } from "./features/placeholder/PlannedPage";
 import { SchedulePage } from "./features/schedule/SchedulePage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { TasksPage } from "./features/tasks/TasksPage";
+
+// Charts are the heaviest code in the app, so only people who open this page download them.
+const AnalyticsPage = lazy(() =>
+  import("./features/analytics/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })),
+);
 
 function NotFoundPage() {
   return (
@@ -43,9 +48,14 @@ export function App() {
           <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/availability" element={<AvailabilityPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          {NAV_ITEMS.filter((item) => item.plannedMilestone).map((item) => (
-            <Route key={item.to} path={item.to} element={<PlannedPage item={item} />} />
-          ))}
+          <Route
+            path="/analytics"
+            element={
+              <Suspense fallback={<LoadingBlock />}>
+                <AnalyticsPage />
+              </Suspense>
+            }
+          />
         </Route>
       </Route>
 

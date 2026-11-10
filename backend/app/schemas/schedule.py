@@ -98,6 +98,7 @@ class SessionRead(BaseModel):
     is_locked: bool
     is_user_modified: bool
     explanation: str | None
+    actual_minutes: int
 
 
 _MIN_SESSION_MINUTES = 5
@@ -159,3 +160,18 @@ class PlacementRead(BaseModel):
     conflicts: list[ConflictRead]
     warnings: list[WarningRead]
     alternatives: list[SlotRead]
+
+
+class ActiveTimerRead(BaseModel):
+    session: SessionRead
+    running: bool
+    elapsed_seconds: int
+
+
+class TimerFinish(BaseModel):
+    """How a timed session ended. Everything is optional; the timer's own total is the default."""
+
+    # Lowers the timed total, for a timer that was left running by accident.
+    actual_minutes: Annotated[int, Field(ge=0, le=100_000)] | None = None
+    remaining_minutes: Annotated[int, Field(ge=0, le=30_000)] | None = None
+    mark_task_completed: bool = False

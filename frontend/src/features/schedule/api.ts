@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, ApiError } from "../../lib/api";
 
@@ -50,6 +50,7 @@ export interface StudySession {
   is_locked: boolean;
   is_user_modified: boolean;
   explanation: string | null;
+  actual_minutes: number;
 }
 
 export interface ScheduleStatus {
@@ -83,6 +84,16 @@ export function useSessions() {
   return useQuery<StudySession[], ApiError>({
     queryKey: SESSIONS_KEY,
     queryFn: () => api("/sessions"),
+  });
+}
+
+/** Everything overlapping a date range, including past and finished sessions, for the calendar. */
+export function useSessionsInRange(range: { start: string; end: string } | null) {
+  return useQuery<StudySession[], ApiError>({
+    queryKey: [...SESSIONS_KEY, range],
+    queryFn: () => api(`/sessions?start=${range!.start}&end=${range!.end}`),
+    enabled: range !== null,
+    placeholderData: keepPreviousData,
   });
 }
 

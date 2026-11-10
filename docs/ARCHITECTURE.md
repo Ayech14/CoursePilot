@@ -168,8 +168,8 @@ All routes are under `/api/v1`. Interactive docs are served at `/docs`.
 | Preferences | `GET, PUT /preferences` | M2 |
 | Schedule | `POST /schedule/preview` (repair or regenerate), `GET /schedule/status`, `GET /schedule/proposals/{current,{id}}`, `POST …/{id}/apply`, `POST …/{id}/reject` | M3–M4 |
 | Sessions | `GET, POST /sessions`, `PATCH, DELETE /sessions/{id}`, `POST …/{id}/{lock,unlock}`, `POST /sessions/check-placement` | M3–M4 |
-| Session timer | `POST /sessions/{id}/{start,pause,resume,finish}` | M5 |
-| Dashboard, analytics | `GET /dashboard`, `GET /analytics/*` | M5 |
+| Session timer | `GET /sessions/active`, `POST /sessions/{id}/{start,pause,resume,finish,discard}` | M5 |
+| Dashboard, analytics | `GET /dashboard`, `GET /analytics?weeks=` | M5 |
 | Notifications | `GET /notifications`, `POST /notifications/{id}/read` | M6 |
 
 Requests for another user's resource return `404`, not `403`, so that existence is not revealed.
@@ -187,8 +187,16 @@ Requests for another user's resource return `404`, not `403`, so that existence 
 - **Dates in forms use the profile's time zone**, never the browser's, through `lib/datetime.ts`.
   Luxon does this work because `datetime-local` inputs have no zone and the platform has no widely
   supported way to convert one in a named zone. FullCalendar's named-zone support needs it in M5 too.
-- **Libraries added when needed:** FullCalendar in M5 (MIT core with drag, resize and named-zone
-  support) and Recharts in M5.
+- **Libraries added when needed:** FullCalendar 6.1 (MIT core with drag, resize and named-zone
+  support) and Recharts 3, both in M5. Each loads only on the page that uses it. FullCalendar 7 was
+  skipped because it replaces the Luxon plugin with a Temporal polyfill, a second date system.
+- **Calendar time zones (the M5 spike).** Sessions go into FullCalendar as UTC instants and are drawn
+  in the profile's zone through the Luxon plugin, which is correct. The way back is not: at clock
+  changes the plugin picks the *second* occurrence of a repeated hour, and places a time that does not
+  exist an hour *before* the gap. Both contradict our rule. So `calendarTimes.ts` reads only the
+  wall-clock time the student dropped on and converts it with `lib/datetime.ts`. A move keeps the
+  session's real length rather than converting both ends, which could stretch it by an hour. A test
+  runs the real FullCalendar conversion, so a library upgrade that changes this will fail.
 
 ## 9. Testing strategy
 
@@ -213,5 +221,5 @@ The integration tests use real PostgreSQL because exclusion constraints, partial
 | Reschedule causes excessive churn | User distrust | Repair-first algorithm; stability metric tested |
 | Concurrent edits corrupt a schedule | Overlaps, lost updates | Exclusion constraint; row lock; version check |
 | Engine too slow in Python | Slow previews | Bounded candidates and horizon; benchmark test in M3 |
-| Calendar drag and drop with named time zones | M5 complexity | Spike at the start of M5 |
+| Calendar drag and drop with named time zones | M5 complexity | Spiked in M5; see section 8 |
 | Scope (this is a large product) | Unfinished areas | Requirement IDs tracked per milestone |

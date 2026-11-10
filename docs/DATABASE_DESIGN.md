@@ -99,7 +99,9 @@ The engine classifies sessions from these columns:
 
 **`work_intervals`**: `id`, `user_id`, `session_id`, `started_at`, `ended_at` (null while running).
 Pause and resume close one interval and open another, so actual time is a sum and survives a page
-reload or a closed browser.
+reload or a closed browser. These rows are the only record of when study happened, and every hours
+figure in the dashboard and analytics is computed from them. Lowering the time at finish trims the
+intervals, so the task total and the charts cannot disagree.
 
 **`schedule_proposals`**: `id`, `user_id`, `trigger`, `status` (`pending`, `applied`, `rejected`,
 `superseded`), `base_schedule_version`, `summary` (JSONB: at-risk tasks, stability), `decided_at`, `created_at`.

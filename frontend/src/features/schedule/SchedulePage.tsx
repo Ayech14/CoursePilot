@@ -1,11 +1,11 @@
 import { CalendarDays, Lock, LockOpen } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ErrorAlert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/Modal";
-import { EmptyState, PageHeader, QueryState } from "../../components/ui/States";
+import { EmptyState, LoadingBlock, PageHeader, QueryState } from "../../components/ui/States";
 import {
   formatDuration,
   formatTime,
@@ -13,6 +13,7 @@ import {
   minutesBetween,
 } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
+import { StartSessionButton } from "../timer/StartSessionButton";
 import {
   useApplyProposal,
   useCurrentProposal,
@@ -27,6 +28,20 @@ import {
 } from "./api";
 import { EditSessionDialog } from "./EditSessionDialog";
 import { ProposalReview } from "./ProposalReview";
+import type { RefusedMove } from "./ScheduleCalendar";
+import { SessionDetails } from "./SessionDetails";
+
+// FullCalendar is large, so it loads only when the calendar is shown.
+const ScheduleCalendar = lazy(() =>
+  import("./ScheduleCalendar").then((module) => ({ default: module.ScheduleCalendar })),
+);
+
+type View = "calendar" | "list";
+const VIEW_STORAGE_KEY = "coursepilot.schedule.view";
+
+function storedView(): View {
+  return localStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "calendar";
+}
 
 interface RowProps {
   session: StudySession;
@@ -60,8 +75,15 @@ function SessionRow({ session, zone, onEdit, onRemove }: RowProps) {
         {session.is_user_modified && !session.is_locked && (
           <span className="text-xs text-ink-subtle">Edited by you</span>
         )}
+        {session.status === "completed" && (
+          <span className="text-xs text-ink-subtle">
+            Completed, {formatDuration(session.actual_minutes)} studied
+          </span>
+        )}
+        {session.status === "missed" && <span className="text-xs text-danger">Missed</span>}
         {editable && (
           <span className="ml-auto flex gap-1">
+            <StartSessionButton session={session} zone={zone} compact />
             <Button
               variant="ghost"
               compact
@@ -121,11 +143,25 @@ export function SchedulePage() {
   const apply = useApplyProposal();
   const reject = useRejectProposal();
   const remove = useDeleteSession();
+  const [view, setView] = useState<View>(storedView);
+  const [opened, setOpened] = useState<StudySession | null>(null);
   const [editing, setEditing] = useState<StudySession | null>(null);
+  const [refused, setRefused] = useState<RefusedMove | null>(null);
   const [removing, setRemoving] = useState<StudySession | null>(null);
 
   const actionError = preview.error ?? apply.error ?? reject.error ?? remove.error;
   const hasSessions = (sessions.data?.length ?? 0) > 0;
+
+  function chooseView(next: View) {
+    setView(next);
+    localStorage.setItem(VIEW_STORAGE_KEY, next);
+  }
+
+  function closeEditor() {
+    setEditing(null);
+    setRefused(null);
+  }
+
   const showBanner = hasSessions && !proposal.data && status.data?.needs_update === true;
 
   return (
@@ -191,49 +227,99 @@ export function SchedulePage() {
         }
       </QueryState>
 
-      <QueryState query={sessions}>
-        {(list) =>
-          list.length === 0 ? (
-            <EmptyState
-              icon={CalendarDays}
-              title="No study sessions planned"
-              message="Add tasks and set your weekly hours, then generate a schedule."
-              action={
-                <div className="flex justify-center gap-4 text-sm font-medium text-brand">
-                  <Link to="/tasks" className="hover:underline">
-                    Tasks
-                  </Link>
-                  <Link to="/availability" className="hover:underline">
-                    Availability
-                  </Link>
-                </div>
-              }
-            />
-          ) : (
-            <div className="space-y-6">
-              {groupByLocalDay(list, (session) => session.start_at, zone).map((day) => (
-                <section key={day.heading}>
-                  <h2 className="mb-2 text-sm font-semibold">{day.heading}</h2>
-                  <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
-                    {day.items.map((session) => (
-                      <SessionRow
-                        key={session.id}
-                        session={session}
-                        zone={zone}
-                        onEdit={() => setEditing(session)}
-                        onRemove={() => setRemoving(session)}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )
-        }
-      </QueryState>
+      <div role="group" aria-label="Schedule view" className="mb-4 inline-flex rounded-lg border border-line p-0.5">
+        {(["calendar", "list"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={view === option}
+            onClick={() => chooseView(option)}
+            className={`h-8 rounded-md px-3 text-sm font-medium capitalize transition-colors ${
+              view === option ? "bg-raised text-ink" : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
 
-      {editing && (
-        <EditSessionDialog session={editing} zone={zone} onClose={() => setEditing(null)} />
+      {view === "calendar" ? (
+        <>
+          {sessions.data?.length === 0 && (
+            <p className="mb-3 text-sm text-ink-muted">
+              Nothing is planned yet. Add <Link to="/tasks" className="font-medium text-brand hover:underline">tasks</Link> and{" "}
+              <Link to="/availability" className="font-medium text-brand hover:underline">weekly hours</Link>, then generate a schedule.
+            </p>
+          )}
+          <Suspense fallback={<LoadingBlock />}>
+            <ScheduleCalendar zone={zone} onOpen={setOpened} onRefused={setRefused} />
+          </Suspense>
+        </>
+      ) : (
+        <QueryState query={sessions}>
+          {(list) =>
+            list.length === 0 ? (
+              <EmptyState
+                icon={CalendarDays}
+                title="No study sessions planned"
+                message="Add tasks and set your weekly hours, then generate a schedule."
+                action={
+                  <div className="flex justify-center gap-4 text-sm font-medium text-brand">
+                    <Link to="/tasks" className="hover:underline">
+                      Tasks
+                    </Link>
+                    <Link to="/availability" className="hover:underline">
+                      Availability
+                    </Link>
+                  </div>
+                }
+              />
+            ) : (
+              <div className="space-y-6">
+                {groupByLocalDay(list, (session) => session.start_at, zone).map((day) => (
+                  <section key={day.heading}>
+                    <h2 className="mb-2 text-sm font-semibold">{day.heading}</h2>
+                    <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+                      {day.items.map((session) => (
+                        <SessionRow
+                          key={session.id}
+                          session={session}
+                          zone={zone}
+                          onEdit={() => setEditing(session)}
+                          onRemove={() => setRemoving(session)}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            )
+          }
+        </QueryState>
+      )}
+
+      {opened && (
+        <SessionDetails
+          session={opened}
+          zone={zone}
+          onClose={() => setOpened(null)}
+          onChange={() => {
+            setEditing(opened);
+            setOpened(null);
+          }}
+          onRemove={() => {
+            setRemoving(opened);
+            setOpened(null);
+          }}
+        />
+      )}
+      {(editing ?? refused) && (
+        <EditSessionDialog
+          session={editing ?? refused!.session}
+          zone={zone}
+          onClose={closeEditor}
+          attempt={refused ?? undefined}
+        />
       )}
       {removing && (
         <ConfirmDialog

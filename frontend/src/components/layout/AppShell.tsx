@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/AuthContext";
+import { TimerBar } from "../../features/timer/TimerBar";
 import { Logo } from "../ui/Logo";
 import { NAV_ITEMS } from "./navigation";
 
@@ -14,7 +15,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Logo />
       </div>
       <nav aria-label="Main" className="flex-1 space-y-1 px-3 py-2">
-        {NAV_ITEMS.map(({ to, label, icon: Icon, plannedMilestone }) => (
+        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -29,9 +30,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           >
             <Icon aria-hidden="true" className="size-4.5 shrink-0" />
             <span className="flex-1">{label}</span>
-            {plannedMilestone && (
-              <span className="text-xs font-normal text-ink-subtle">Soon</span>
-            )}
           </NavLink>
         ))}
       </nav>
@@ -109,6 +107,7 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-10">
+        <TimerBar />
         <Outlet />
       </main>
     </div>

@@ -64,6 +64,8 @@ class PlanRequest:
     weekly_blocks: tuple[WeeklyTime, ...] = ()
     one_off_blocks: tuple[Interval, ...] = ()
     existing_sessions: tuple[ExistingSession, ...] = ()
+    # Finished work today. Unlike a session still on the schedule, it has no slot to count.
+    studied_today_minutes: int = 0
 
 
 class Reason(StrEnum):
