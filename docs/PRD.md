@@ -128,7 +128,7 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 
 - Two-way calendar sync. CoursePilot reads calendar links (L3) but never writes to another calendar.
 - Mobile apps. The web UI is responsive instead.
-- Email or push delivery. Notifications are in-app, because email needs an external service.
+- Email or push delivery. Notifications are in-app (a bell in the sidebar), because email needs an external service.
 - Multi-user collaboration and instructor roles.
 - Multi-semester archives beyond archiving a course.
 

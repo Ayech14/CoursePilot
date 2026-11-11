@@ -59,10 +59,15 @@ calendar days in the profile's zone. The dashboard header shows a ring for how m
 week's study is done and the next deadline. Task rows show progress against the estimate, with icon
 actions. "Your week" opens with a week-at-a-glance picture and the free study hours per day.
 
-### M8: Production Readiness — Not started
+### M8: Production Readiness — In progress
 Notifications, rate limiting, security review, Playwright journeys, performance pass, production
 images, deployment, documentation. A6, I1–I3, K7.
 **Done when:** the application runs at a public URL through a CI-driven deployment.
+
+**Part 1, done (2026-11-11):** in-app notifications (I1–I3, A6), sign-in and registration rate
+limits, calendar links encrypted at rest, security headers, and a dependency audit.
+**Part 2, waiting on the hosting choice:** production images, deployment (K7), a content security
+policy for the web app, Playwright journeys and a performance pass.
 
 ### M9: Optional Extensions — Not started
 CP-SAT comparison against the baseline. Optional AI helper that is off by default and never required.
@@ -168,6 +173,30 @@ why the calendar converts dropped times itself. See `ARCHITECTURE.md` section 8.
 The browser journey found a crash the mocked tests could not: the preview FullCalendar draws while
 you drag across empty time has no session, and the renderer assumed one. With no error boundary,
 the whole app went blank. Both are fixed and tested, and a page crash now leaves the menu usable.
+
+### M8 part 1 verification record (2026-11-11)
+
+| Check | Result |
+|-------|--------|
+| Backend tests, lint, types, coverage | 5,190 passed; ruff and mypy clean; 99% coverage, new notification code at 100% |
+| Frontend tests, lint, production build | 255 passed, clean |
+| Notifications | Each kind traced to the records that cause it; asking again never repeats one; a changed deadline is a new one; one combined notice when there are no study hours |
+| Isolation | Reading another student's notification is "not found"; the database refuses a notification pointing at another student's task |
+| Rate limits | 5 wrong passwords lock that email from that address for up to 15 minutes, even with the right password; 20 failures across emails from one address; 10 registrations an hour |
+| Calendar links | Stored encrypted; the migration encrypted the owner's real eClass link in place (backed up first) and the app still reads it; a data test runs the migration both ways on a scratch database |
+| Security headers | nosniff, no referrer, no framing, a deny-all CSP on API answers, no-store on private data, HSTS in production |
+| Dependency audit | `cryptography` pinned to 50.0.2 after the audit found advisories in 46 and 49; ESLint's `minimatch` overridden to 11.0.8, and ESLint was checked to still report errors |
+| Browser | Bell, panel, mark-as-read and its link checked on a real account; the sign-in page shows the "too many attempts" message |
+
+The tests caught one real bug before it shipped: missed sessions were only marked after
+notifications were worked out, so a missed session was reported one visit late.
+
+**Known gaps carried forward:**
+- Rate limits are per server process, in memory. Correct for one process; several would each count separately.
+- Registration still says when an email is taken. That helps students and is now rate limited, but it does tell someone whether an address has an account.
+- No content security policy for the web app yet; it belongs with the production web server in part 2.
+- The theme is saved per device. Untested against a real eClass link from outside the owner's account.
+- No Playwright suite yet (part 2). Touch dragging untested on a real phone.
 
 ### M7 verification record (2026-11-10)
 

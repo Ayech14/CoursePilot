@@ -48,6 +48,16 @@ class InvalidRefreshTokenError(AppError):
     message = "Your session has expired. Please sign in again."
 
 
+class RateLimitedError(AppError):
+    status_code = 429
+    code = "rate_limited"
+    message = "Too many attempts. Please wait a few minutes and try again."
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__(details={"retry_after_seconds": retry_after_seconds})
+        self.headers = {"Retry-After": str(retry_after_seconds)}  # type: ignore[misc]
+
+
 class EmailTakenError(AppError):
     status_code = 409
     code = "email_taken"

@@ -10,6 +10,7 @@ from app.core.logging import JsonFormatter, request_id_var
 from app.schemas.auth import UserUpdate
 
 GOOD_SECRET = "a-real-secret-value-that-is-long-enough-to-pass"
+LINK_KEY = "a-separate-key-for-calendar-links-long-enough"
 
 
 def make_settings(**overrides: Any) -> Settings:
@@ -19,6 +20,7 @@ def make_settings(**overrides: Any) -> Settings:
         "jwt_secret": GOOD_SECRET,
         "environment": "production",
         "cookie_secure": True,
+        "calendar_link_key": LINK_KEY,
     }
     return Settings(**(values | overrides))
 
@@ -43,7 +45,9 @@ def test_short_secret_refused_everywhere() -> None:
 
 
 def test_secret_not_shown_in_repr() -> None:
-    assert GOOD_SECRET not in repr(make_settings())
+    shown = repr(make_settings())
+    assert GOOD_SECRET not in shown
+    assert LINK_KEY not in shown
 
 
 def test_log_lines_are_json_with_request_id_and_extras() -> None:

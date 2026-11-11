@@ -149,3 +149,16 @@ export function describeDue(iso: string, zone: string, now: Date = new Date()): 
   if (days <= 6) return { label: `In ${days} days`, tone: days <= 3 ? "accent" : "neutral" };
   return { label: due.toFormat("LLL d"), tone: "neutral" };
 }
+
+/** "Just now", "5m ago", "3h ago", "Yesterday", then a date, counted on the student's calendar. */
+export function formatAgo(iso: string, zone: string, now: Date = new Date()): string {
+  const then = DateTime.fromISO(iso, { zone });
+  const current = DateTime.fromJSDate(now, { zone });
+  const minutes = Math.floor(current.diff(then, "minutes").minutes);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const days = Math.round(current.startOf("day").diff(then.startOf("day"), "days").days);
+  if (days === 0) return `${Math.floor(minutes / 60)}h ago`;
+  if (days === 1) return "Yesterday";
+  return then.toFormat(then.year === current.year ? "LLL d" : "LLL d yyyy");
+}

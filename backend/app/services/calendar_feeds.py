@@ -15,6 +15,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import InvalidFieldsError, SuggestionClosedError
+from app.core.link_cipher import link_cipher
 from app.models import (
     CalendarFeed,
     Course,
@@ -48,8 +49,8 @@ _EXTRA_DAYS = 7
 _MAX_BUSY_RANGE = timedelta(days=62)
 
 
-def _url_hint(url: str) -> str:
-    return f"{urlsplit(url).hostname}/…"
+def _url_hint(feed: CalendarFeed) -> str:
+    return f"{feed.url_host}/…"
 
 
 def _read(db: Session, feed: CalendarFeed) -> FeedRead:
@@ -64,7 +65,7 @@ def _read(db: Session, feed: CalendarFeed) -> FeedRead:
     return FeedRead(
         id=feed.id,
         name=feed.name,
-        url_hint=_url_hint(feed.url),
+        url_hint=_url_hint(feed),
         last_synced_at=feed.last_synced_at,
         last_error=feed.last_error,
         busy_count=feed.busy_count,
@@ -167,7 +168,7 @@ def _sync(db: Session, user: User, feed: CalendarFeed, now: datetime) -> bool:
     feed.last_attempt_at = now
     horizon = db.get_one(StudyPreferences, user.id).planning_horizon_days + _EXTRA_DAYS
     try:
-        data = feed_fetch.fetch_calendar(feed.url)
+        data = feed_fetch.fetch_calendar(link_cipher().decrypt(feed.url_ciphertext))
         parsed = ics.parse(
             data, ZoneInfo(user.timezone), now - _LOOKBACK, now + timedelta(days=horizon)
         )
@@ -201,13 +202,23 @@ def create_feed(db: Session, user: User, data: FeedCreate, now: datetime) -> Fee
         url = feed_fetch.normalize_url(data.url)
     except feed_fetch.FeedFetchError as exc:
         raise InvalidFieldsError({"url": str(exc)}) from exc
+    cipher = link_cipher()
+    digest = cipher.digest(url)
     duplicate = db.scalar(
-        select(CalendarFeed.id).where(CalendarFeed.user_id == user.id, CalendarFeed.url == url)
+        select(CalendarFeed.id).where(
+            CalendarFeed.user_id == user.id, CalendarFeed.url_digest == digest
+        )
     )
     if duplicate is not None:
         raise InvalidFieldsError({"url": "This calendar is already connected."})
 
-    feed = CalendarFeed(user_id=user.id, name=data.name, url=url)
+    feed = CalendarFeed(
+        user_id=user.id,
+        name=data.name,
+        url_ciphertext=cipher.encrypt(url),
+        url_digest=digest,
+        url_host=urlsplit(url).hostname or "",
+    )
     db.add(feed)
     db.flush()
     if not _sync(db, user, feed, now):

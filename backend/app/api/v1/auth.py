@@ -2,10 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Response, status
+from fastapi import APIRouter, Cookie, Request, Response, status
 
 from app.api.deps import AppSettings, DbSession
 from app.core.config import Settings
+from app.core.errors import InvalidCredentialsError
+from app.core.rate_limit import AuthLimits
 from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, UserRead
 from app.services import auth as auth_service
 
@@ -37,18 +39,51 @@ def _auth_response(
     )
 
 
+def _limits(request: Request) -> AuthLimits:
+    limits: AuthLimits = request.app.state.auth_limits
+    return limits
+
+
+def _address(request: Request) -> str:
+    # Behind a reverse proxy this is the proxy's address unless Uvicorn runs with --proxy-headers
+    # and trusts that proxy (--forwarded-allow-ips). The production setup does both.
+    return request.client.host if request.client else "unknown"
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(
-    data: RegisterRequest, response: Response, db: DbSession, settings: AppSettings
+    data: RegisterRequest,
+    request: Request,
+    response: Response,
+    db: DbSession,
+    settings: AppSettings,
 ) -> AuthResponse:
-    return _auth_response(response, auth_service.register(db, data, settings), settings)
+    limit, address = _limits(request).register_per_address, _address(request)
+    limit.check(address)
+    tokens = auth_service.register(db, data, settings)
+    limit.record(address)
+    return _auth_response(response, tokens, settings)
 
 
 @router.post("/login")
 def login(
-    data: LoginRequest, response: Response, db: DbSession, settings: AppSettings
+    data: LoginRequest,
+    request: Request,
+    response: Response,
+    db: DbSession,
+    settings: AppSettings,
 ) -> AuthResponse:
-    tokens = auth_service.login(db, data.email, data.password, settings)
+    limits, address = _limits(request), _address(request)
+    account = f"{address}|{data.email.strip().lower()}"
+    limits.login_per_account.check(account)
+    limits.login_per_address.check(address)
+    try:
+        tokens = auth_service.login(db, data.email, data.password, settings)
+    except InvalidCredentialsError:
+        limits.login_per_account.record(account)
+        limits.login_per_address.record(address)
+        raise
+    limits.login_per_account.clear(account)
     return _auth_response(response, tokens, settings)
 
 

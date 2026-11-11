@@ -21,6 +21,7 @@ dependencies = [
     "tzdata>=2024.2",
     "icalendar>=7.3,<8",
     "recurring-ical-events>=3.8,<4",
+    "cryptography>=50.0.2,<51",
 ]
 
 [project.optional-dependencies]

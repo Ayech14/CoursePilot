@@ -75,8 +75,8 @@ so separate tables would duplicate them. For an exam, `deadline_at` is the exam'
 `external_uid` for imported events (a CHECK keeps the two set together). A shift, a night out, a trip.
 Imported rows are replaced on each sync and cannot be edited through the API.
 
-**`calendar_feeds`**: `user_id`, `name`, `url` (unique per user, at most 2000 characters),
-`last_attempt_at`, `last_synced_at`, `last_error`, `busy_count`. Deleting a feed deletes its blocks
+**`calendar_feeds`**: `user_id`, `name`, `url_ciphertext`, `url_digest` (unique per user),
+`url_host`, `last_attempt_at`, `last_synced_at`, `last_error`, `busy_count`. Deleting a feed deletes its blocks
 and open suggestions.
 
 **`deadline_suggestions`**: `user_id`, `feed_id`, `external_uid` (unique per feed), `title`, `due_at`,
@@ -126,7 +126,11 @@ intervals, so the task total and the charts cannot disagree.
 ### Notifications
 
 **`notifications`**: `id`, `user_id`, `kind`, `title`, `body`, `dedupe_key`, `task_id` (nullable),
-`read_at`, `created_at`.
+`read_at`, `created_at`. `(task_id, user_id)` references `tasks (id, user_id)`, like sessions.
+
+A calendar link carries a private token, so it is never stored in plain text: `url_ciphertext` is
+the link encrypted with Fernet, `url_digest` an HMAC-SHA256 of it that spots the same calendar twice,
+and `url_host` the part shown to the student.
 
 ## 4. Integrity rules worth noting
 

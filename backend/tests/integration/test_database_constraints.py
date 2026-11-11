@@ -341,6 +341,23 @@ def test_duplicate_notification_key_rejected(db: Session) -> None:
         db.flush()
 
 
+def test_notification_cannot_point_at_another_users_task(db: Session) -> None:
+    owner, intruder = make_user(db), make_user(db)
+    task = make_task(db, owner)
+    db.add(
+        Notification(
+            user_id=intruder.id,
+            kind=NotificationKind.TASK_OVERDUE,
+            title="Overdue",
+            body="Someone else's task.",
+            dedupe_key="overdue:x",
+            task_id=task.id,
+        )
+    )
+    with pytest.raises(IntegrityError, match="fk_notifications_task_owner"):
+        db.flush()
+
+
 def test_deleting_a_course_cascades_to_tasks_and_sessions(db: Session) -> None:
     user = make_user(db)
     course = make_course(db, user)

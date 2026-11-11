@@ -211,6 +211,15 @@ def _attention(
     return sorted(items, key=lambda item: (order[item.reason], item.deadline_at))
 
 
+def attention(db: Session, user: User, now: datetime) -> list[AttentionItem]:
+    """Open tasks that need a look: overdue, short of planned time, or due within 48 hours.
+
+    The dashboard and notifications both use this, so they always agree.
+    """
+    open_rows = [row for row in _tasks(db, user) if row[0].status != TaskStatus.COMPLETED]
+    return _attention(open_rows, _active_sessions(db, user, now, now + _ATTENTION_WINDOW), now)
+
+
 def dashboard(db: Session, user: User, now: datetime) -> DashboardRead:
     zone = ZoneInfo(user.timezone)
     today = now.astimezone(zone).date()

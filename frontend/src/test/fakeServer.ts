@@ -30,9 +30,12 @@ type Handler = (url: string, init: RequestInit) => Response | Promise<Response>;
 
 /** Replace global fetch. The handler receives the path, e.g. "/api/v1/users/me". */
 export function stubFetch(handler: Handler) {
-  // The timer bar asks this on every page. Tests that are about the timer stub it through stubApi.
-  const withTimer: Handler = (url, init) =>
-    url === "/api/v1/sessions/active" ? jsonResponse(200, null) : handler(url, init);
+  // The timer bar and the bell ask these on every page. Tests about them stub them through stubApi.
+  const withTimer: Handler = (url, init) => {
+    if (url === "/api/v1/sessions/active") return jsonResponse(200, null);
+    if (url === "/api/v1/notifications") return jsonResponse(200, { items: [], unread: 0 });
+    return handler(url, init);
+  };
   return install(withTimer);
 }
 
@@ -55,6 +58,7 @@ export function stubApi(routes: Record<string, RouteHandler>) {
     const key = `${init.method ?? "GET"} ${url.replace("/api/v1", "").split("?")[0]}`;
     if (key === "POST /auth/refresh" && !routes[key]) return jsonResponse(200, session());
     if (key === "GET /sessions/active" && !routes[key]) return jsonResponse(200, null);
+    if (key === "GET /notifications" && !routes[key]) return jsonResponse(200, { items: [], unread: 0 });
     const handler = routes[key];
     if (!handler) return errorResponse(404, "not_found", `No stub for ${key}`);
     return handler(init.body ? JSON.parse(init.body as string) : undefined, url);

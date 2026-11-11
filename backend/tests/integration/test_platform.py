@@ -103,3 +103,54 @@ def test_database_race_returns_a_clean_conflict() -> None:
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "conflict"
     assert "duplicate key" not in response.text
+
+
+SECURITY_HEADERS = {
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "x-frame-options": "DENY",
+    "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+}
+
+
+def test_api_answers_carry_security_headers_and_are_never_cached(client: TestClient) -> None:
+    for response in (client.get("/api/v1/users/me"), client.get("/api/v1/nowhere")):
+        for name, value in SECURITY_HEADERS.items():
+            assert response.headers[name] == value, name
+        assert response.headers["cache-control"] == "no-store"
+    # Plain HTTP in development: telling browsers to insist on HTTPS would lock them out.
+    assert "strict-transport-security" not in client.get("/health").headers
+
+
+def test_even_an_unhandled_error_carries_them() -> None:
+    app = create_app()
+
+    @app.get("/api/v1/boom")
+    def boom() -> None:
+        raise RuntimeError("boom")
+
+    response = TestClient(app, raise_server_exceptions=False).get("/api/v1/boom")
+    assert response.status_code == 500
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_the_api_docs_keep_working(client: TestClient) -> None:
+    response = client.get("/docs")
+    assert response.status_code == 200
+    assert "content-security-policy" not in response.headers
+
+
+def test_production_tells_browsers_to_use_https_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("JWT_SECRET", "a-production-secret-that-is-long-enough")
+    monkeypatch.setenv("CALENDAR_LINK_KEY", "another-production-secret-long-enough")
+    monkeypatch.setenv("COOKIE_SECURE", "true")
+    get_settings.cache_clear()
+    try:
+        response = TestClient(create_app()).get("/health")
+    finally:
+        get_settings.cache_clear()
+    assert response.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"

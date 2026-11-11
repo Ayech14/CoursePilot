@@ -89,6 +89,17 @@ Celery and Redis would be added infrastructure for very little. Time-based effec
 deadline notifications) run as an **idempotent reconcile step** when a user loads the app. A user
 who is away has no one to notify in-app, so nothing is lost.
 
+Notifications follow the same rule: `GET /notifications` works out new ones before answering, and
+the app asks when it opens and every five minutes. Each notification's `dedupe_key` names its event
+(`overdue:<task>:<deadline>`), so asking again inserts nothing and a changed deadline is a new event.
+
+### 3.5a Abuse limits and secrets at rest
+Sign-in and registration go through an in-memory sliding window (`app/core/rate_limit.py`): five
+failed sign-ins per email and address in 15 minutes, twenty per address, ten registrations an hour.
+In memory is right for one process and needs no Redis. Calendar links carry a private token, so they
+are stored encrypted with Fernet under `CALENDAR_LINK_KEY` (required in production, different from
+the JWT secret), with an HMAC digest to detect duplicates (`app/core/link_cipher.py`).
+
 ### 3.6 Strings with CHECK constraints over native PostgreSQL enums
 Adding a value to a native enum has awkward migration rules and removing one is very hard. A
 `VARCHAR` with a `CHECK` is changed by an ordinary migration and gives the same integrity.
@@ -173,7 +184,7 @@ All routes are under `/api/v1`. Interactive docs are served at `/docs`.
 | Busy times | `GET /busy-times?start=&end=` (weekly, one-off and imported, combined) | M6 |
 | Connected calendars | `GET, POST /calendar-feeds`, `PATCH, DELETE /calendar-feeds/{id}`, `POST …/{id}/sync`, `POST /calendar-feeds/sync-stale` | M6 |
 | Deadline suggestions | `GET /deadline-suggestions`, `POST …/{id}/accept`, `POST …/{id}/dismiss` | M6 |
-| Notifications | `GET /notifications`, `POST /notifications/{id}/read` | M8 |
+| Notifications | `GET /notifications`, `POST /notifications/{id}/read`, `POST /notifications/read-all` | M8 |
 
 Requests for another user's resource return `404`, not `403`, so that existence is not revealed.
 

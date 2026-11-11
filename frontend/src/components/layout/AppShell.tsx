@@ -1,8 +1,9 @@
 import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/AuthContext";
+import { NotificationBell } from "../../features/notifications/NotificationBell";
 import { TimerBar } from "../../features/timer/TimerBar";
 import { resolveTheme } from "../../lib/theme";
 import { useTheme } from "../../lib/useTheme";
@@ -50,9 +51,13 @@ function SidebarContent({
   const toggleLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
   return (
     <div className="flex h-full flex-col">
-      <div className={`flex h-16 items-center ${collapsed ? "justify-center" : "justify-between px-5 pr-3"}`}>
+      <div
+        className={`flex items-center ${collapsed ? "flex-col justify-center gap-1 py-3.5" : "h-16 justify-between px-5 pr-3"}`}
+      >
         {!collapsed && <Logo />}
         {onToggle && (
+          <div className={`flex items-center gap-0.5 ${collapsed ? "flex-col-reverse" : ""}`}>
+            <NotificationBell placement="sidebar" />
           <button
             type="button"
             onClick={onToggle}
@@ -63,6 +68,7 @@ function SidebarContent({
           >
             <ToggleIcon aria-hidden="true" className="size-4.5" />
           </button>
+          </div>
         )}
       </div>
       <nav aria-label="Main" className={`flex-1 space-y-1 py-2 ${collapsed ? "px-2.5" : "px-3"}`}>
@@ -161,7 +167,10 @@ export function AppShell() {
   const currentLabel = NAV_ITEMS.find((item) => pathname.startsWith(item.to))?.label;
 
   return (
-    <div className={`min-h-dvh transition-[padding] duration-200 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
+    <div
+      style={{ "--sidebar-width": collapsed ? "4rem" : "16rem" } as CSSProperties}
+      className={`min-h-dvh transition-[padding] duration-200 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}
+    >
       <aside
         className={`fixed inset-y-0 left-0 z-30 hidden border-r border-line bg-surface transition-[width] duration-200 lg:block ${
           collapsed ? "w-16" : "w-64"
@@ -201,6 +210,9 @@ export function AppShell() {
           <Menu aria-hidden="true" className="size-5" />
         </button>
         <span className="text-sm font-semibold">{currentLabel ?? "CoursePilot"}</span>
+        <div className="ml-auto">
+          <NotificationBell placement="header" />
+        </div>
       </header>
 
       <main className={`mx-auto px-4 py-8 sm:px-8 lg:py-10 ${collapsed ? "max-w-7xl" : "max-w-6xl"}`}>

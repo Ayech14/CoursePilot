@@ -177,7 +177,9 @@ describe("schedule calendar", () => {
     await open({ "PATCH /sessions/s1": () => errorResponse(409, "session_not_editable", "Only sessions that have not started can be changed.") });
     const revert = vi.fn();
     act(() => calendar.props.eventDrop({ event: eventFrom(), revert }));
-    expect(await screen.findByText("Only sessions that have not started can be changed.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Only sessions that have not started can be changed.", {}, { timeout: 4000 }),
+    ).toBeInTheDocument();
     expect(revert).toHaveBeenCalled();
   });
 

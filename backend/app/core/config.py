@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     refresh_reuse_grace_seconds: int = Field(default=10, ge=0)
     cookie_secure: bool = True
 
+    # Encrypts stored calendar links. Required in production; elsewhere the JWT secret is used.
+    calendar_link_key: SecretStr | None = Field(default=None, min_length=32)
+
     # Empty by default: the frontend reaches the API on the same origin through a proxy.
     cors_origins: list[str] = []
 
@@ -38,6 +41,10 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET must be replaced in production")
         if not self.cookie_secure:
             raise ValueError("COOKIE_SECURE must be true in production")
+        if self.calendar_link_key is None:
+            raise ValueError("CALENDAR_LINK_KEY must be set in production")
+        if self.calendar_link_key.get_secret_value() == self.jwt_secret.get_secret_value():
+            raise ValueError("CALENDAR_LINK_KEY must differ from JWT_SECRET")
         return self
 
 

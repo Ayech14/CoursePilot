@@ -1,4 +1,4 @@
-"""Request correlation, access logging and the last-resort error handler."""
+"""Request correlation, security headers, access logging and the last-resort error handler."""
 
 import json
 import logging
@@ -18,11 +18,31 @@ logger = logging.getLogger("coursepilot.access")
 _SAFE_REQUEST_ID = re.compile(r"^[A-Za-z0-9-]{8,64}$")
 
 
+# The interactive API docs load their scripts from a CDN, so they cannot have the strict policy.
+_DOCS_PATHS = ("/docs", "/redoc")
+_HSTS = "max-age=31536000; includeSubDomains"
+
+
+def _secure(headers: MutableHeaders, path: str, hsts: bool) -> None:
+    """Headers that cost nothing and close off whole classes of attack."""
+    headers.setdefault("X-Content-Type-Options", "nosniff")  # No guessing JSON is a page.
+    headers.setdefault("Referrer-Policy", "no-referrer")
+    headers.setdefault("X-Frame-Options", "DENY")  # The API is never framed.
+    if not path.startswith(_DOCS_PATHS):
+        headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+    if path.startswith("/api/"):
+        # Answers carry a student's private data, so no browser or proxy should keep a copy.
+        headers.setdefault("Cache-Control", "no-store")
+    if hsts:
+        headers.setdefault("Strict-Transport-Security", _HSTS)
+
+
 class RequestContextMiddleware:
     """Pure ASGI middleware, so that the request ID is still available for unhandled errors."""
 
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, hsts: bool = False) -> None:
         self.app = app
+        self.hsts = hsts
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -42,7 +62,9 @@ class RequestContextMiddleware:
             if message["type"] == "http.response.start":
                 response_started = True
                 status = message["status"]
-                MutableHeaders(scope=message)["X-Request-ID"] = request_id
+                headers = MutableHeaders(scope=message)
+                headers["X-Request-ID"] = request_id
+                _secure(headers, scope["path"], self.hsts)
             await send(message)
 
         try:

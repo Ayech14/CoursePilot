@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, Timestamps, UUIDPrimaryKey, str_enum
@@ -13,18 +13,18 @@ from app.models.enums import SuggestionStatus
 class CalendarFeed(UUIDPrimaryKey, Timestamps, Base):
     """An iCalendar link. Its timed events become busy time; its deadlines become suggestions.
 
-    The link usually contains a private token, so the API never returns it in full.
+    The link usually contains a private token, so it is stored encrypted (see
+    app/core/link_cipher.py) and the API never returns it. Only its host is kept readable, to show.
     """
 
     __tablename__ = "calendar_feeds"
-    __table_args__ = (
-        UniqueConstraint("user_id", "url"),
-        CheckConstraint("char_length(url) <= 2000", name="url_length"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "url_digest"),)
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(120))
-    url: Mapped[str] = mapped_column(Text)
+    url_ciphertext: Mapped[str] = mapped_column(Text)
+    url_digest: Mapped[str] = mapped_column(String(64))
+    url_host: Mapped[str] = mapped_column(String(255))
     last_attempt_at: Mapped[datetime | None]
     last_synced_at: Mapped[datetime | None]
     last_error: Mapped[str | None] = mapped_column(Text)

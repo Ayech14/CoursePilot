@@ -73,6 +73,7 @@ ID_ROUTES: dict[tuple[str, str], dict[str, Any] | None] = {
     ("DELETE", "/calendar-feeds/{feed_id}"): None,
     ("POST", "/deadline-suggestions/{suggestion_id}/accept"): {"estimated_minutes": 60},
     ("POST", "/deadline-suggestions/{suggestion_id}/dismiss"): None,
+    ("POST", "/notifications/{notification_id}/read"): None,
 }
 
 
@@ -120,7 +121,9 @@ def test_isolation_table_covers_every_route_with_an_id() -> None:
 def _seed(client: TestClient, owner: Headers) -> dict[str, tuple[str, str]]:
     """Create one of each record; return its ID and the URL that proves it is unchanged."""
     course = new_course(client, owner)["id"]
-    task = new_task(client, owner, course_id=course)["id"]
+    # Due tomorrow, so that the owner has a notification to try to read.
+    tomorrow = (datetime.now(UTC) + timedelta(hours=30)).isoformat()
+    task = new_task(client, owner, course_id=course, deadline_at=tomorrow)["id"]
     recurring = client.post(
         f"{API}/availability/recurring-blocks", json=_RECURRING_BODY, headers=owner
     ).json()["id"]
@@ -144,7 +147,9 @@ def _seed(client: TestClient, owner: Headers) -> dict[str, tuple[str, str]]:
         headers=owner,
     ).json()["id"]
     suggestion = client.get(f"{API}/deadline-suggestions", headers=owner).json()[0]["id"]
+    notification = client.get(f"{API}/notifications", headers=owner).json()["items"][0]["id"]
     return {
+        "notification_id": (notification, f"{API}/notifications"),
         "feed_id": (feed, f"{API}/calendar-feeds"),
         "suggestion_id": (suggestion, f"{API}/deadline-suggestions"),
         "session_id": (
@@ -186,6 +191,7 @@ LISTS: dict[str, ListRequest] = {
     "one_off": lambda c, h: c.get(f"{API}/availability/one-off-blocks", headers=h).json(),
     "feeds": lambda c, h: c.get(f"{API}/calendar-feeds", headers=h).json(),
     "suggestions": lambda c, h: c.get(f"{API}/deadline-suggestions", headers=h).json(),
+    "notifications": lambda c, h: c.get(f"{API}/notifications", headers=h).json()["items"],
     "imported_busy": lambda c, h: [
         item for item in _busy_this_week(c, h) if item["source"] == "calendar"
     ],
