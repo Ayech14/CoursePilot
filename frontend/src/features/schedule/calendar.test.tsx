@@ -202,3 +202,96 @@ describe("schedule calendar", () => {
     expect(screen.queryByTestId("calendar")).not.toBeInTheDocument();
   });
 });
+
+const TASK = {
+  id: "t9",
+  course_id: "c1",
+  title: "Midterm 2",
+  description: null,
+  task_type: "midterm",
+  // 2:30 PM in Toronto on Thursday, Nov 19.
+  deadline_at: "2026-11-19T19:30:00Z",
+  estimated_minutes: 600,
+  remaining_minutes: 600,
+  actual_minutes: 0,
+  priority: 3,
+  status: "todo",
+  completed_at: null,
+};
+const COURSE = { id: "c1", name: "Intro to AI", code: "EECS 3401", color: "#4fd1bd", archived_at: null };
+
+describe("deadlines and views on the schedule calendar", () => {
+  const withDeadlines = {
+    "GET /tasks": () => jsonResponse(200, { items: [TASK, { ...TASK, id: "t8", title: "Lab report", task_type: "assignment", deadline_at: "2026-11-21T04:30:00Z" }], total: 2 }),
+    "GET /courses": () => jsonResponse(200, [COURSE]),
+  };
+
+  beforeEach(() => {
+    calendar.props = null;
+  });
+
+  it("asks for the tasks due in the visible range and puts them in the Due row of their local day", async () => {
+    const mock = await open(withDeadlines);
+    act(() =>
+      calendar.props.datesSet({ start: new Date("2026-11-16T05:00:00Z"), end: new Date("2026-11-23T05:00:00Z") }),
+    );
+    await waitFor(() => expect(calendar.props.events.filter((e: any) => e.allDay)).toHaveLength(2));
+    expect(
+      mock.mock.calls.some(([url]) =>
+        url.includes("/tasks?due_after=2026-11-16T05%3A00%3A00.000Z&due_before=2026-11-23T05%3A00%3A00.000Z"),
+      ),
+    ).toBe(true);
+    const [exam, lab] = calendar.props.events.filter((e: any) => e.allDay);
+    expect(exam).toMatchObject({ title: "Midterm 2", start: "2026-11-19", editable: false, borderColor: "#4fd1bd" });
+    expect(exam.classNames).toContain("deadline-exam");
+    // 04:30 UTC on the 21st is still the evening of the 20th in Toronto.
+    expect(lab).toMatchObject({ title: "Lab report", start: "2026-11-20" });
+    expect(lab.classNames).not.toContain("deadline-exam");
+    expect(calendar.props.allDayText).toBe("Due");
+  });
+
+  it("shows the deadline's type and local time, and opens the task when clicked", async () => {
+    await open(withDeadlines);
+    act(() => calendar.props.datesSet({ start: new Date("2026-11-16T05:00:00Z"), end: new Date("2026-11-23T05:00:00Z") }));
+    await waitFor(() => expect(calendar.props.events.filter((e: any) => e.allDay)).toHaveLength(2));
+    const exam = calendar.props.events.find((e: any) => e.id === "due-t9");
+
+    const { render } = await import("@testing-library/react");
+    const body = render(
+      calendar.props.eventContent({ event: { ...exam, extendedProps: exam.extendedProps }, timeText: "", view: { type: "timeGridWeek" } }),
+    );
+    expect(body.container).toHaveTextContent("Midterm 2Midterm · 2:30 PM");
+    body.unmount();
+
+    act(() => calendar.props.eventClick({ event: { extendedProps: exam.extendedProps } }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Edit task");
+  });
+
+  it("offers month, week and day views, and only moves sessions where there are times", async () => {
+    await open();
+    expect(calendar.props.headerToolbar.right).toBe("dayGridMonth,timeGridWeek,timeGridDay");
+    expect(calendar.props.views.dayGridMonth).toMatchObject({ editable: false, selectable: false });
+  });
+
+  it("ignores a selection in the Due row, which is not busy time", async () => {
+    await open();
+    const unselect = vi.fn();
+    act(() =>
+      calendar.props.select({ allDay: true, startStr: "2026-11-16", endStr: "2026-11-17", view: { calendar: { unselect } } }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("explains that nothing can be scheduled without study hours", async () => {
+    await open({ "GET /availability/windows": () => jsonResponse(200, []) });
+    const warning = await screen.findByRole("alert", { name: "No study hours set" });
+    expect(warning).toHaveTextContent("You haven't set any study hours yet");
+    expect(screen.getByRole("link", { name: "Set study hours" })).toHaveAttribute("href", "/availability");
+  });
+
+  it("does not warn when study hours exist", async () => {
+    await open();
+    await waitFor(() => expect(calendar.props.businessHours).toHaveLength(2));
+    expect(screen.queryByRole("alert", { name: "No study hours set" })).not.toBeInTheDocument();
+  });
+});

@@ -9,6 +9,7 @@
 - A time with no zone ("floating") is read in the student's zone.
 """
 
+import html
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -98,7 +99,8 @@ def parse(data: bytes, zone: ZoneInfo, start: datetime, end: datetime) -> Parsed
         event_end = _end_of(event, event_start, zone)
         uid = _text(event, "UID") or _text(event, "SUMMARY")
         key = f"{uid}|{event_start.astimezone(UTC).isoformat()}"[:500]
-        title = _text(event, "SUMMARY")
+        # Moodle (YorkU eClass) writes titles with HTML entities, such as "Plan &amp; Slides".
+        title = html.unescape(_text(event, "SUMMARY"))
 
         if event_end - event_start <= _DEADLINE_LENGTH:
             if len(result.deadlines) < MAX_DEADLINES:

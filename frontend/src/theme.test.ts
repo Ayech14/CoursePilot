@@ -51,6 +51,7 @@ const PAIRS: [string, string, number][] = [
   ["ink", "brand-soft", 4.5],
   ["accent", "surface", 4.5],
   ["accent", "accent-soft", 4.5],
+  ["ink-muted", "accent-soft", 4.5],
   ["danger", "surface", 4.5],
   ["danger", "danger-soft", 4.5],
   ["canvas", "danger", 4.5],
@@ -80,7 +81,7 @@ function mix(color: string, base: string, share: number): string {
 }
 
 // Students pick any course color. Badges, calendar sessions and course marks put ink text on a wash
-// of that color, at most 24% strong, so check the most extreme colors on every surface.
+// of that color, at most 30% strong (exam deadlines), so check the most extreme colors on every surface.
 describe.each([
   ["dark", dark],
   ["light", light],
@@ -88,7 +89,7 @@ describe.each([
   const extremes = ["#000000", "#ffffff", "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"];
   it.each(extremes)("ink stays readable on a wash of %s", (color) => {
     for (const base of ["canvas", "surface", "raised"]) {
-      const wash = mix(color, palette[base]!, 0.24);
+      const wash = mix(color, palette[base]!, 0.3);
       expect(contrast(palette.ink!, wash), `${color} over ${base}`).toBeGreaterThanOrEqual(4.5);
     }
   });

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { api, ApiError } from "../../lib/api";
 import { useAcademicMutation } from "../courses/api";
@@ -86,6 +86,17 @@ export function useTasks(filters: TaskListFilters) {
   return useQuery<{ items: Task[]; total: number }, ApiError>({
     queryKey: ["tasks", "list", filters],
     queryFn: () => api(`/tasks?${toQuery(filters)}`),
+  });
+}
+
+/** Every task due inside a range, whatever its status, for drawing deadlines on the calendar. */
+export function useDeadlinesInRange(range: { start: string; end: string } | null) {
+  return useQuery<{ items: Task[]; total: number }, ApiError>({
+    queryKey: ["tasks", "due", range],
+    queryFn: () =>
+      api(`/tasks?${new URLSearchParams({ due_after: range!.start, due_before: range!.end, limit: String(PAGE_SIZE) })}`),
+    enabled: range !== null,
+    placeholderData: keepPreviousData,
   });
 }
 

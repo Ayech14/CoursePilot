@@ -1,4 +1,4 @@
-import { CalendarDays, Lock, LockOpen } from "lucide-react";
+import { CalendarDays, Clock, Lock, LockOpen } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -13,9 +13,12 @@ import {
   minutesBetween,
 } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
+import { useWindows } from "../availability/api";
 import { BusyTimeDialog } from "../availability/BusyTimeDialog";
 import { BusyDetails } from "../calendars/BusyDetails";
 import { useSyncStaleFeeds, type BusyTime } from "../calendars/api";
+import type { Task } from "../tasks/api";
+import { TaskFormDialog } from "../tasks/TaskFormDialog";
 import { StartSessionButton } from "../timer/StartSessionButton";
 import {
   useApplyProposal,
@@ -152,6 +155,9 @@ export function SchedulePage() {
   const [refused, setRefused] = useState<RefusedMove | null>(null);
   const [newBusy, setNewBusy] = useState<{ start: string; end: string } | null>(null);
   const [openBusy, setOpenBusy] = useState<BusyTime | null>(null);
+  const [openTask, setOpenTask] = useState<Task | null>(null);
+  const windows = useWindows();
+  const noStudyHours = windows.data?.length === 0;
   const syncStale = useSyncStaleFeeds();
   const { mutate: syncFeeds } = syncStale;
 
@@ -201,6 +207,31 @@ export function SchedulePage() {
         <div className="mb-4">
           <ErrorAlert>{actionError.message}</ErrorAlert>
         </div>
+      )}
+
+      {noStudyHours && (
+        <section
+          role="alert"
+          aria-label="No study hours set"
+          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent-soft px-5 py-4"
+        >
+          <div className="flex items-start gap-3">
+            <Clock aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-accent" />
+            <div>
+              <h2 className="text-sm font-semibold">You haven't set any study hours yet</h2>
+              <p className="mt-0.5 text-sm text-ink-muted">
+                The planner only places sessions inside your weekly study hours, so nothing can be
+                scheduled until you add some. Your deadlines still show on the calendar.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/availability"
+            className="inline-flex h-10 items-center rounded-lg bg-brand px-4 text-sm font-semibold text-brand-ink hover:bg-brand-hover"
+          >
+            Set study hours
+          </Link>
+        </section>
       )}
 
       {showBanner && status.data && (
@@ -255,7 +286,7 @@ export function SchedulePage() {
 
       {view === "calendar" ? (
         <>
-          {sessions.data?.length === 0 && (
+          {sessions.data?.length === 0 && !noStudyHours && (
             <p className="mb-3 text-sm text-ink-muted">
               Nothing is planned yet. Add <Link to="/tasks" className="font-medium text-brand hover:underline">tasks</Link> and{" "}
               <Link to="/availability" className="font-medium text-brand hover:underline">weekly hours</Link>, then generate a schedule.
@@ -267,6 +298,7 @@ export function SchedulePage() {
               onOpen={setOpened}
               onRefused={setRefused}
               onOpenBusy={setOpenBusy}
+              onOpenTask={setOpenTask}
               onSelectRange={setNewBusy}
             />
           </Suspense>
@@ -317,6 +349,7 @@ export function SchedulePage() {
       {newBusy && (
         <BusyTimeDialog start={newBusy.start} end={newBusy.end} zone={zone} onClose={() => setNewBusy(null)} />
       )}
+      {openTask && <TaskFormDialog task={openTask} onClose={() => setOpenTask(null)} />}
       {openBusy && <BusyDetails busy={openBusy} zone={zone} onClose={() => setOpenBusy(null)} />}
       {opened && (
         <SessionDetails

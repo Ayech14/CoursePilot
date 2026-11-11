@@ -182,6 +182,14 @@ The check found a bug older than this milestone: course colour dots inside text 
 and were invisible. Fixed. Fade-ins appear paused in a hidden browser pane, which is the browser
 saving work, not a fault; they run normally on screen and not at all with reduced motion.
 
+**Calendar follow-up, from the owner's use:** midterms entered as tasks never appeared on the
+calendar, because it drew only study sessions and busy times, and the owner had no weekly study
+hours, so nothing had been scheduled. Deadlines and exams now sit in a "Due" row on their local day
+(exams drawn stronger; clicking one edits the task), there is a month view, and the Schedule page
+says plainly when no study hours are set. Calendar titles from eClass with HTML entities
+("&amp;amp;") are now decoded on import. Covered by new tests; each was checked to fail when the
+behaviour it guards was broken on purpose.
+
 **Second pass check (2026-11-10):** 235 frontend tests passed; lint, types and build clean. New
 tests cover the due labels (another zone and the day clocks went back), free hours per day, the
 dashboard header figures, and that ink text stays at 4.5:1 on a wash of any course colour, from

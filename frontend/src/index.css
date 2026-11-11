@@ -163,6 +163,39 @@
   outline-offset: 1px;
 }
 
+/* Deadlines in the Due row. Exams are stronger, so a midterm is hard to miss. */
+.fc .fc-event.deadline-event {
+  border-width: 0 0 0 3px;
+  border-radius: 0.375rem;
+  margin-bottom: 2px;
+  cursor: pointer;
+}
+
+.fc .fc-event.deadline-event .fc-event-main {
+  color: var(--color-ink);
+}
+
+.fc .fc-event.deadline-exam {
+  font-weight: 600;
+}
+
+.fc .fc-timegrid-axis-cushion {
+  color: var(--color-ink-subtle);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+/* Month view: sessions show as a dot, a time and a title. */
+.fc .fc-daygrid-dot-event .fc-event-main,
+.fc .fc-daygrid-dot-event {
+  color: var(--color-ink);
+}
+
+.fc .fc-daygrid-day-number,
+.fc .fc-daygrid-more-link {
+  color: var(--color-ink-muted);
+}
+
 /* Busy time: visible but clearly not study, and not something to drag. */
 .fc .fc-event.busy-event {
   border: 1px dashed var(--color-line);

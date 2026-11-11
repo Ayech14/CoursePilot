@@ -128,3 +128,18 @@ def test_missing_titles_get_a_plain_label() -> None:
 def test_anything_that_is_not_a_calendar_is_refused(data: bytes) -> None:
     with pytest.raises(IcsError):
         parse(data, TORONTO, START, END)
+
+
+def test_html_entities_in_titles_are_decoded() -> None:
+    # eClass sends "&amp;" where the title has "&".
+    parsed = parse(
+        calendar(
+            event("d", ":20261123T050000Z", summary="Marketing Plan &amp; Presentation"),
+            event("b", ":20261110T150000Z", ":20261110T160000Z", "Q&amp;A &lt;online&gt;"),
+        ),
+        TORONTO,
+        START,
+        END,
+    )
+    assert [d.title for d in parsed.deadlines] == ["Marketing Plan & Presentation"]
+    assert [b.title for b in parsed.busy] == ["Q&A <online>"]
