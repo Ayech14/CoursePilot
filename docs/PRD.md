@@ -33,7 +33,7 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 | A3 | Today's study schedule | M5 |
 | A4 | Weekly study hours; completed vs remaining tasks | M5 |
 | A5 | Workload distribution | M5 |
-| A6 | Important notifications | M6 |
+| A6 | Important notifications | M8 |
 
 ### B. Courses
 | ID | Requirement | Milestone |
@@ -64,7 +64,7 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 | E2 | Respect availability, session length, daily maximum, breaks, existing sessions | M3 |
 | E3 | No overlapping sessions; no unrealistic days | M3 |
 | E4 | Understandable explanation for each decision | M3 |
-| E5 | Deterministic baseline; evaluate constraint optimization later | M3, M7 |
+| E5 | Deterministic baseline; evaluate constraint optimization later | M3, M9 |
 
 ### F. Adaptive rescheduling
 | ID | Requirement | Milestone |
@@ -89,9 +89,9 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 ### I. Notifications
 | ID | Requirement | Milestone |
 |----|-------------|-----------|
-| I1 | Approaching deadlines, overdue and unfinished tasks | M6 |
-| I2 | Schedule adjustments and workload conflicts | M6 |
-| I3 | No repeated identical notifications | M6 |
+| I1 | Approaching deadlines, overdue and unfinished tasks | M8 |
+| I2 | Schedule adjustments and workload conflicts | M8 |
+| I3 | No repeated identical notifications | M8 |
 
 ### J. Manual schedule control
 | ID | Requirement | Milestone |
@@ -105,6 +105,14 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 | J7 | Accept or reject proposed changes | M4 |
 | J8 | Engine distinguishes automatic, manually modified and locked sessions | M4 |
 
+### L. Your real week
+| ID | Requirement | Milestone |
+|----|-------------|-----------|
+| L1 | Busy times with a kind (class, work shift, social, personal, other), weekly or once | M6 |
+| L2 | Busy times visible on the schedule calendar, and added by dragging across it | M6 |
+| L3 | Connect a calendar by link (iCalendar); its timed events become busy time and stay in sync | M6 |
+| L4 | Due dates in connected calendars are suggested as tasks, created only when the student confirms | M6 |
+
 ### K. Platform
 | ID | Requirement | Milestone |
 |----|-------------|-----------|
@@ -114,11 +122,11 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 | K4 | Validation, consistent errors, structured logs, env-based config | M1 |
 | K5 | Migrations, indexes, API docs | M1 and ongoing |
 | K6 | Unit and integration tests, CI | M1 and ongoing |
-| K7 | Deployment | M6 |
+| K7 | Deployment | M8 |
 
 ## 5. Non-goals for v1
 
-- Calendar import or sync (ICS, Google Calendar).
+- Two-way calendar sync. CoursePilot reads calendar links (L3) but never writes to another calendar.
 - Mobile apps. The web UI is responsive instead.
 - Email or push delivery. Notifications are in-app, because email needs an external service.
 - Multi-user collaboration and instructor roles.
@@ -149,9 +157,14 @@ it rises as later milestones build on it.
 | 10g | What about a timer left running? | At finish the student can lower the time, but not raise it above what was timed. Lowering trims the work intervals. | Timed figures stay trustworthy. Untimed work has its own "log progress" action on the task. |
 | 10h | Do hours logged by hand appear in weekly charts? | No. They count toward a task's actual time and the estimate comparison, but have no date. Charts say "timed sessions". | Inventing a date for them would make the weekly figures untrue. |
 | 10i | When does a week start? | Monday, in the student's time zone. | Matches the availability grid. A preference can be added if anyone needs one. |
+| 10j | Which calendar events block time? | Timed events. All-day events are skipped, and events marked free or cancelled are ignored. | School calendars use all-day events for holidays and notes. Blocking whole days for those would empty the schedule. |
+| 10k | How is a deadline told apart from a class? | An event with no length (start equals end, or no end) is a deadline. | This is how Moodle (YorkU eClass) publishes "is due" items, and most course sites follow it. |
+| 10l | Do calendar deadlines become tasks automatically? | No. They are suggested; the student confirms each and gives an estimate. | Chosen by the project owner. A calendar can hold many minor items, and only the student knows the effort. |
+| 10m | How often do connected calendars sync? | When added, when the student asks, and when the schedule opens and a feed is over six hours old. | No background worker, the same approach as missed sessions. |
+| 10n | What happens when a sync fails? | The last good events stay, and the error is shown on the feed. | A website being down for an hour should not erase a student's classes from their week. |
 | 10 | What if the work cannot fit? | Plan as much as possible and report which tasks are at risk and by how many minutes. | An honest "this will not fit" is the most useful output in an overloaded week. |
 
 ## 7. Open questions for the project owner
 
-1. **Deployment target** (M6). Options are a free PaaS tier or a small VPS with Docker Compose.
-2. **Public demo** (M6). A seeded demo account would help a portfolio, but needs a reset job.
+1. **Deployment target** (M8). Options are a free PaaS tier or a small VPS with Docker Compose.
+2. **Public demo** (M8). A seeded demo account would help a portfolio, but needs a reset job.

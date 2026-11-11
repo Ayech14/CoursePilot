@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.core.errors import InvalidFieldsError
+from app.core.errors import ImportedBlockError, InvalidFieldsError
 from app.models import (
     AvailabilityWindow,
     OneOffBlock,
@@ -93,7 +93,8 @@ def delete_recurring_block(db: Session, user: User, block_id: uuid.UUID) -> None
 def list_one_off_blocks(
     db: Session, user: User, ends_after: datetime | None, starts_before: datetime | None
 ) -> list[OneOffBlock]:
-    query = select(OneOffBlock).where(OneOffBlock.user_id == user.id)
+    # Imported blocks are managed through their calendar, so this lists only the student's own.
+    query = select(OneOffBlock).where(OneOffBlock.user_id == user.id, OneOffBlock.feed_id.is_(None))
     if ends_after is not None:
         query = query.where(OneOffBlock.end_at > ends_after)
     if starts_before is not None:
@@ -109,10 +110,17 @@ def create_one_off_block(db: Session, user: User, data: OneOffBlockWrite) -> One
     return block
 
 
+def _own_one_off(db: Session, user: User, block_id: uuid.UUID) -> OneOffBlock:
+    block = get_owned(db, OneOffBlock, block_id, user.id)
+    if block.feed_id is not None:
+        raise ImportedBlockError
+    return block
+
+
 def update_one_off_block(
     db: Session, user: User, block_id: uuid.UUID, data: OneOffBlockWrite
 ) -> OneOffBlock:
-    block = get_owned(db, OneOffBlock, block_id, user.id)
+    block = _own_one_off(db, user, block_id)
     for field, value in data.model_dump().items():
         setattr(block, field, value)
     mark_schedule_inputs_changed(db, user.id)
@@ -121,7 +129,7 @@ def update_one_off_block(
 
 
 def delete_one_off_block(db: Session, user: User, block_id: uuid.UUID) -> None:
-    db.delete(get_owned(db, OneOffBlock, block_id, user.id))
+    db.delete(_own_one_off(db, user, block_id))
     mark_schedule_inputs_changed(db, user.id)
     db.commit()
 

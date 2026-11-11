@@ -1,5 +1,6 @@
 import type {
   BusinessHoursInput,
+  DateSelectArg,
   DatesSetArg,
   EventClickArg,
   EventContentArg,
@@ -16,8 +17,9 @@ import { useMemo, useState } from "react";
 import { ErrorAlert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
 import type { ApiError } from "../../lib/api";
-import { minutesToTimeInput } from "../../lib/datetime";
-import { useWindows } from "../availability/api";
+import { localInputToIso, minutesToTimeInput } from "../../lib/datetime";
+import { categoryLabel, useWindows } from "../availability/api";
+import { useBusyTimes, type BusyTime } from "../calendars/api";
 import {
   useMoveSession,
   useSessionsInRange,
@@ -40,6 +42,8 @@ interface Props {
   zone: string;
   onOpen: (session: StudySession) => void;
   onRefused: (move: RefusedMove) => void;
+  onOpenBusy: (busy: BusyTime) => void;
+  onSelectRange: (range: { start: string; end: string }) => void;
 }
 
 function statusClass(status: string): string {
@@ -66,8 +70,36 @@ function toEvent(session: StudySession): EventInput {
   };
 }
 
-function EventBody({ event, timeText }: EventContentArg) {
-  const session = event.extendedProps.session as StudySession;
+function busyEvent(busy: BusyTime): EventInput {
+  return {
+    id: `busy-${busy.id}-${busy.start_at}`,
+    title: busy.title,
+    start: busy.start_at,
+    end: busy.end_at,
+    editable: false,
+    classNames: ["busy-event"],
+    extendedProps: { busy },
+  };
+}
+
+function EventBody(arg: EventContentArg) {
+  const { event, timeText } = arg;
+  const busy = event.extendedProps.busy as BusyTime | undefined;
+  if (busy) {
+    return (
+      <div className="overflow-hidden px-1 py-0.5 leading-tight">
+        <p className="truncate font-medium">{event.title}</p>
+        <p className="truncate text-[0.6875rem] text-ink-muted">
+          {categoryLabel(busy.category)} · {timeText}
+        </p>
+      </div>
+    );
+  }
+  const session = event.extendedProps.session as StudySession | undefined;
+  if (!session) {
+    // The preview FullCalendar draws while a range is being selected carries no data of ours.
+    return <div className="px-1 py-0.5 text-[0.6875rem] leading-tight">{timeText}</div>;
+  }
   return (
     <div className="overflow-hidden px-1 py-0.5 leading-tight">
       <p className="flex items-center gap-1 font-medium">
@@ -86,14 +118,18 @@ function isPlacementError(error: ApiError): boolean {
   return error.code === "session_conflict" || error.code === "placement_warnings";
 }
 
-export function ScheduleCalendar({ zone, onOpen, onRefused }: Props) {
+export function ScheduleCalendar({ zone, onOpen, onRefused, onOpenBusy, onSelectRange }: Props) {
   const [range, setRange] = useState<{ start: string; end: string } | null>(null);
   const sessions = useSessionsInRange(range);
+  const busy = useBusyTimes(range);
   const windows = useWindows();
   const move = useMoveSession();
   const [narrow] = useState(() => window.matchMedia?.(NARROW_SCREEN).matches ?? false);
 
-  const events = useMemo(() => (sessions.data ?? []).map(toEvent), [sessions.data]);
+  const events = useMemo(
+    () => [...(busy.data ?? []).map(busyEvent), ...(sessions.data ?? []).map(toEvent)],
+    [busy.data, sessions.data],
+  );
   const businessHours = useMemo<BusinessHoursInput>(
     () =>
       (windows.data ?? []).map((window) => ({
@@ -129,6 +165,20 @@ export function ScheduleCalendar({ zone, onOpen, onRefused }: Props) {
     save(session, resizedTimes(info.event.endStr, session, zone), info.revert);
   }
 
+  function handleSelect(info: DateSelectArg) {
+    info.view.calendar.unselect();
+    // Read as wall-clock times, for the same reason as drops. See calendarTimes.ts.
+    const start = localInputToIso(info.startStr.slice(0, 16), zone);
+    const end = localInputToIso(info.endStr.slice(0, 16), zone);
+    if (start && end && end > start) onSelectRange({ start, end });
+  }
+
+  function handleClick(info: EventClickArg) {
+    const busyTime = info.event.extendedProps.busy as BusyTime | undefined;
+    if (busyTime) onOpenBusy(busyTime);
+    else onOpen(info.event.extendedProps.session as StudySession);
+  }
+
   function handleDates(info: DatesSetArg) {
     setRange({ start: info.start.toISOString(), end: info.end.toISOString() });
   }
@@ -140,6 +190,11 @@ export function ScheduleCalendar({ zone, onOpen, onRefused }: Props) {
       {moveFailure && (
         <div className="mb-3">
           <ErrorAlert>{moveFailure.message}</ErrorAlert>
+        </div>
+      )}
+      {busy.isError && (
+        <div className="mb-3">
+          <ErrorAlert>Your busy times could not be loaded, so they are not shown. {busy.error.message}</ErrorAlert>
         </div>
       )}
       {sessions.isError && (
@@ -175,13 +230,17 @@ export function ScheduleCalendar({ zone, onOpen, onRefused }: Props) {
           datesSet={handleDates}
           eventDrop={handleDrop}
           eventResize={handleResize}
-          eventClick={(info: EventClickArg) => onOpen(info.event.extendedProps.session as StudySession)}
+          selectable
+          selectMirror
+          select={handleSelect}
+          eventClick={handleClick}
           eventContent={(arg) => <EventBody {...arg} />}
         />
       </div>
       <p className="mt-2 text-xs text-ink-subtle">
-        Drag a session to move it, or drag its lower edge to change its length. Shaded times are
-        outside your weekly study hours. Select a session for more options.
+        Drag a session to move it, or its lower edge to change its length. Drag across empty time to
+        add a shift or plans. Striped blocks are times you are busy; shaded times are outside your
+        study hours.
       </p>
     </div>
   );

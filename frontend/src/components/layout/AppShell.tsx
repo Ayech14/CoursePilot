@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/AuthContext";
 import { TimerBar } from "../../features/timer/TimerBar";
+import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { Logo } from "../ui/Logo";
 import { NAV_ITEMS } from "./navigation";
 
@@ -107,8 +108,10 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-10">
-        <TimerBar />
-        <Outlet />
+        <ErrorBoundary resetKey={pathname}>
+          <TimerBar />
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

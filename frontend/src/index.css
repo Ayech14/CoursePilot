@@ -84,3 +84,21 @@
   outline: 2px solid var(--color-brand);
   outline-offset: 1px;
 }
+
+/* Busy time: visible but clearly not study, and not something to drag. */
+.fc .fc-event.busy-event {
+  border: 1px dashed var(--color-line);
+  border-radius: 0.25rem;
+  background-color: var(--color-canvas);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    rgb(255 255 255 / 0.04) 6px 12px
+  );
+  color: var(--color-ink-muted);
+  cursor: pointer;
+}
+
+.fc .fc-event.busy-event .fc-event-main {
+  color: var(--color-ink-muted);
+}

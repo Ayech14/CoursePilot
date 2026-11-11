@@ -364,6 +364,7 @@ describe("availability", () => {
     "GET /availability/recurring-blocks": courses(),
     "GET /availability/one-off-blocks": courses(),
     "GET /preferences": () => jsonResponse(200, PREFERENCES),
+    "GET /calendar-feeds": courses(),
   };
 
   it("saves a range that runs to the end of the day as minute 1440", async () => {
@@ -445,7 +446,7 @@ describe("availability", () => {
     );
   });
 
-  it("adds a weekly commitment", async () => {
+  it("adds a weekly class", async () => {
     const mock = stubApi({
       ...base,
       "POST /availability/recurring-blocks": () => jsonResponse(201, {}),
@@ -453,19 +454,19 @@ describe("availability", () => {
     renderApp("/availability");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Add commitment" }));
+    await user.click(await screen.findByRole("button", { name: "Add weekly" }));
     await user.type(dialog().getByLabelText("Title"), "Lecture");
     await user.selectOptions(dialog().getByLabelText("Day"), "2");
     await user.click(dialog().getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(bodiesSent(mock, "POST /availability/recurring-blocks")).toEqual([
-        { title: "Lecture", day_of_week: 2, start_minute: 540, end_minute: 630 },
+        { title: "Lecture", category: "class", day_of_week: 2, start_minute: 540, end_minute: 630 },
       ]),
     );
   });
 
-  it("adds time off in the profile's time zone", async () => {
+  it("adds a one-time shift in the profile's time zone", async () => {
     const mock = stubApi({
       ...base,
       "POST /auth/refresh": inTokyo,
@@ -474,8 +475,9 @@ describe("availability", () => {
     renderApp("/availability");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Add time off" }));
+    await user.click(await screen.findByRole("button", { name: "Add one-time" }));
     await user.type(dialog().getByLabelText("Title"), "Trip");
+    await user.selectOptions(dialog().getByLabelText("What is it?"), "work");
     fireEvent.change(dialog().getByLabelText("Starts"), { target: { value: "2026-12-24T09:00" } });
     fireEvent.change(dialog().getByLabelText("Ends"), { target: { value: "2026-12-26T09:00" } });
     await user.click(dialog().getByRole("button", { name: "Save" }));
@@ -484,6 +486,7 @@ describe("availability", () => {
       expect(bodiesSent(mock, "POST /availability/one-off-blocks")).toEqual([
         {
           title: "Trip",
+          category: "work",
           start_at: "2026-12-24T00:00:00.000Z",
           end_at: "2026-12-26T00:00:00.000Z",
         },

@@ -11,7 +11,8 @@ from sqlalchemy import CheckConstraint, ForeignKey, Index, SmallInteger, String,
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, Timestamps, UUIDPrimaryKey
+from app.db.base import Base, Timestamps, UUIDPrimaryKey, str_enum
+from app.models.enums import BlockCategory
 
 
 class StudyPreferences(Timestamps, Base):
@@ -75,21 +76,43 @@ class RecurringBlock(UUIDPrimaryKey, Timestamps, Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String(120))
+    category: Mapped[BlockCategory] = mapped_column(
+        str_enum(BlockCategory, "block_category"),
+        default=BlockCategory.OTHER,
+        server_default="other",
+    )
     day_of_week: Mapped[int] = mapped_column(SmallInteger)
     start_minute: Mapped[int] = mapped_column(SmallInteger)
     end_minute: Mapped[int] = mapped_column(SmallInteger)
 
 
 class OneOffBlock(UUIDPrimaryKey, Timestamps, Base):
-    """A single period of unavailability, such as an appointment or a trip."""
+    """A single period of unavailability, such as a shift, a night out or a trip.
+
+    Rows with a `feed_id` were imported from a connected calendar. Each sync replaces them, so the
+    student edits them at their source, not here.
+    """
 
     __tablename__ = "one_off_blocks"
     __table_args__ = (
         CheckConstraint("start_at < end_at", name="ordered"),
+        CheckConstraint(
+            "(feed_id IS NULL) = (external_uid IS NULL)", name="import_fields_together"
+        ),
         Index(None, "user_id", "start_at"),
+        Index(None, "feed_id"),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String(120))
+    category: Mapped[BlockCategory] = mapped_column(
+        str_enum(BlockCategory, "block_category"),
+        default=BlockCategory.OTHER,
+        server_default="other",
+    )
+    feed_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("calendar_feeds.id", ondelete="CASCADE")
+    )
+    external_uid: Mapped[str | None] = mapped_column(String(500))
     start_at: Mapped[datetime]
     end_at: Mapped[datetime]

@@ -1,5 +1,5 @@
 import { CalendarDays, Lock, LockOpen } from "lucide-react";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ErrorAlert } from "../../components/ui/Alert";
@@ -13,6 +13,9 @@ import {
   minutesBetween,
 } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
+import { BusyTimeDialog } from "../availability/BusyTimeDialog";
+import { BusyDetails } from "../calendars/BusyDetails";
+import { useSyncStaleFeeds, type BusyTime } from "../calendars/api";
 import { StartSessionButton } from "../timer/StartSessionButton";
 import {
   useApplyProposal,
@@ -147,6 +150,13 @@ export function SchedulePage() {
   const [opened, setOpened] = useState<StudySession | null>(null);
   const [editing, setEditing] = useState<StudySession | null>(null);
   const [refused, setRefused] = useState<RefusedMove | null>(null);
+  const [newBusy, setNewBusy] = useState<{ start: string; end: string } | null>(null);
+  const [openBusy, setOpenBusy] = useState<BusyTime | null>(null);
+  const syncStale = useSyncStaleFeeds();
+  const { mutate: syncFeeds } = syncStale;
+
+  // Connected calendars refresh when they are over six hours old. The server decides; this asks.
+  useEffect(() => syncFeeds(), [syncFeeds]);
   const [removing, setRemoving] = useState<StudySession | null>(null);
 
   const actionError = preview.error ?? apply.error ?? reject.error ?? remove.error;
@@ -252,7 +262,13 @@ export function SchedulePage() {
             </p>
           )}
           <Suspense fallback={<LoadingBlock />}>
-            <ScheduleCalendar zone={zone} onOpen={setOpened} onRefused={setRefused} />
+            <ScheduleCalendar
+              zone={zone}
+              onOpen={setOpened}
+              onRefused={setRefused}
+              onOpenBusy={setOpenBusy}
+              onSelectRange={setNewBusy}
+            />
           </Suspense>
         </>
       ) : (
@@ -298,6 +314,10 @@ export function SchedulePage() {
         </QueryState>
       )}
 
+      {newBusy && (
+        <BusyTimeDialog start={newBusy.start} end={newBusy.end} zone={zone} onClose={() => setNewBusy(null)} />
+      )}
+      {openBusy && <BusyDetails busy={openBusy} zone={zone} onClose={() => setOpenBusy(null)} />}
       {opened && (
         <SessionDetails
           session={opened}

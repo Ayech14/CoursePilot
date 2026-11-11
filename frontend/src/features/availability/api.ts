@@ -10,8 +10,23 @@ export interface WeeklyTime {
   end_minute: number;
 }
 
+export type Category = "class" | "work" | "social" | "personal" | "other";
+
+export const CATEGORIES: { value: Category; label: string }[] = [
+  { value: "class", label: "Class" },
+  { value: "work", label: "Work shift" },
+  { value: "social", label: "Friends and social" },
+  { value: "personal", label: "Personal" },
+  { value: "other", label: "Other" },
+];
+
+export function categoryLabel(value: Category): string {
+  return CATEGORIES.find((option) => option.value === value)?.label ?? "Other";
+}
+
 export interface RecurringBlockInput extends WeeklyTime {
   title: string;
+  category: Category;
 }
 
 export interface RecurringBlock extends RecurringBlockInput {
@@ -20,6 +35,7 @@ export interface RecurringBlock extends RecurringBlockInput {
 
 export interface OneOffBlockInput {
   title: string;
+  category: Category;
   start_at: string | null;
   end_at: string | null;
 }
@@ -27,6 +43,7 @@ export interface OneOffBlockInput {
 export interface OneOffBlock {
   id: string;
   title: string;
+  category: Category;
   start_at: string;
   end_at: string;
 }
@@ -50,7 +67,11 @@ function useRefreshing<TInput, TResult>(
   const client = useQueryClient();
   return useMutation<TResult, ApiError, TInput>({
     mutationFn,
-    onSuccess: () => client.invalidateQueries({ queryKey: [key] }),
+    // Busy times are built from these, and any of them can mean the schedule needs an update.
+    onSuccess: () =>
+      Promise.all(
+        [[key], ["busy"], ["schedule"]].map((queryKey) => client.invalidateQueries({ queryKey })),
+      ),
   });
 }
 

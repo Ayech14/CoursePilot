@@ -7,13 +7,16 @@ from app.models.availability import (
     RecurringBlock,
     StudyPreferences,
 )
+from app.models.calendar import CalendarFeed, DeadlineSuggestion
 from app.models.identity import RefreshToken, User
 from app.models.notification import Notification
 from app.models.schedule import ProposalChange, ScheduleProposal, StudySession, WorkInterval
 
 __all__ = [
     "AvailabilityWindow",
+    "CalendarFeed",
     "Course",
+    "DeadlineSuggestion",
     "Notification",
     "OneOffBlock",
     "ProposalChange",

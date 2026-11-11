@@ -29,7 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     to: "/availability",
-    label: "Availability",
+    label: "Your week",
     icon: CalendarClock,
   },
   {

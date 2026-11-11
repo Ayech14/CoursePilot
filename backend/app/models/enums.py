@@ -64,6 +64,20 @@ class ChangeAction(StrEnum):
     REMOVE = "remove"
 
 
+class BlockCategory(StrEnum):
+    CLASS = "class"
+    WORK = "work"
+    SOCIAL = "social"
+    PERSONAL = "personal"
+    OTHER = "other"
+
+
+class SuggestionStatus(StrEnum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DISMISSED = "dismissed"
+
+
 class NotificationKind(StrEnum):
     DEADLINE_APPROACHING = "deadline_approaching"
     TASK_OVERDUE = "task_overdue"

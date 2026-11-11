@@ -11,6 +11,7 @@ built. **Not started** is not built. Requirement IDs refer to `PRD.md`.
 | M3 includes saving and previewing a schedule, with a simple list view | Otherwise engine results could not be seen until M5 |
 | The full schema is built in M1 | Its constraints shape every later feature and should be proven early |
 | New optional M7 | Keeps CP-SAT and AI from competing with the core product |
+| New M6 (your real week) and M7 (visual refresh), from the owner's feedback after using M5; production readiness becomes M8 and optional extensions M9 | Shifts and plans were hard to find, school deadlines lived in another calendar, and the look needed warmth |
 
 ## Milestones
 
@@ -40,14 +41,23 @@ Calendar with drag and resize, proposal review screen, study timer, dashboard, c
 H1–H2, J1–J2 (UI). Begins with a short spike on calendar time zone behavior.
 **Done when:** all figures trace to real data, with loading, empty and error states on every screen.
 
-### M6: Production Readiness — Not started
+### M6: Your Real Week — Done
+Busy times with kinds, shown on the calendar and added by dragging; calendars connected by link;
+deadline suggestions. L1–L4.
+**Done when:** a student's classes, shifts and plans all shape the schedule, and a school calendar
+link stays in sync without creating anything the student did not confirm.
+
+### M7: Visual Refresh — Not started
+A warmer dark theme and a light theme, switchable in Settings. Every screen checked in both.
+
+### M8: Production Readiness — Not started
 Notifications, rate limiting, security review, Playwright journeys, performance pass, production
 images, deployment, documentation. A6, I1–I3, K7.
 **Done when:** the application runs at a public URL through a CI-driven deployment.
 
-### M7: Optional Extensions — Not started
+### M9: Optional Extensions — Not started
 CP-SAT comparison against the baseline. Optional AI helper that is off by default and never required.
-Only after M6.
+Only after M8.
 
 ## Status notes
 
@@ -132,13 +142,33 @@ for open-ended work, and a session could be both shortened and removed in one pr
 The spike found that FullCalendar's time conversion contradicts our rules at clock changes, which is
 why the calendar converts dropped times itself. See `ARCHITECTURE.md` section 8.
 
+### M6 verification record (2026-11-10)
+
+| Check | Result |
+|-------|--------|
+| Backend tests against real PostgreSQL 17, also inside the Docker image | 5155 passed, 99% coverage |
+| Frontend tests (stubbed server), lint, types, production build | 165 passed, clean |
+| Migration: upgrade, downgrade, upgrade; models match | Passed |
+| Calendar parsing | Weekly lectures across a clock change with an exception, Moodle due items, floating and named zones, all-day, cancelled and free events, malformed files |
+| Fetcher safety | Private, loopback, link-local, metadata, shared and IPv4-mapped addresses refused; redirects re-checked; size cap; error statuses |
+| New routes protected and isolated | Covered by the isolation tests, plus a test that busy times never include another student's |
+| Deliberately introduced bugs (3 in fetching, 2 in parsing, 8 in feeds and busy times) | Each caused failures, after adding one test the first round showed was missing |
+| Real network | A public Google holidays calendar imported over HTTPS through the pinned connection (all-day events correctly skipped); links to localhost and the metadata address refused |
+| Manual browser journey on the real stack | Busy times listed with kinds; lecture drawn striped on the calendar; a shift added by dragging across Thursday; a calendar deadline reviewed and added as a task |
+
+The browser journey found a crash the mocked tests could not: the preview FullCalendar draws while
+you drag across empty time has no session, and the renderer assumed one. With no error boundary,
+the whole app went blank. Both are fixed and tested, and a page crash now leaves the menu usable.
+
 **Known gaps carried forward:**
-- Login rate limiting is not implemented (M6).
-- Docker images are for development. Production images are in M6.
+- Untested against a real YorkU eClass link, which needs the owner's account. The format it uses is covered by tests.
+- Calendar links are stored unencrypted (M8).
+- Login rate limiting is not implemented (M8).
+- Docker images are for development. Production images are in M8.
 - Missed sessions are detected when the schedule is opened, not at the moment they are missed (by design; see `PRD.md`).
-- There is no Playwright suite yet (M6). The browser journeys above were run by hand.
+- There is no Playwright suite yet (M8). The browser journeys above were run by hand.
 - Touch dragging on a real phone has not been tested. The list view and the Change form work without dragging.
 - A timer running past its planned end does not reserve the time after it, so a new plan could schedule a session during the overrun.
 - Deleting a task also deletes its study history, so past charts lose that time.
-- Scoring weights are reasoned starting values and have not been tuned against data (M7).
-- The notification table exists and its constraints are tested, but no API uses it yet (M6).
+- Scoring weights are reasoned starting values and have not been tuned against data (M9).
+- The notification table exists and its constraints are tested, but no API uses it yet (M8).

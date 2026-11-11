@@ -170,7 +170,10 @@ All routes are under `/api/v1`. Interactive docs are served at `/docs`.
 | Sessions | `GET, POST /sessions`, `PATCH, DELETE /sessions/{id}`, `POST …/{id}/{lock,unlock}`, `POST /sessions/check-placement` | M3–M4 |
 | Session timer | `GET /sessions/active`, `POST /sessions/{id}/{start,pause,resume,finish,discard}` | M5 |
 | Dashboard, analytics | `GET /dashboard`, `GET /analytics?weeks=` | M5 |
-| Notifications | `GET /notifications`, `POST /notifications/{id}/read` | M6 |
+| Busy times | `GET /busy-times?start=&end=` (weekly, one-off and imported, combined) | M6 |
+| Connected calendars | `GET, POST /calendar-feeds`, `PATCH, DELETE /calendar-feeds/{id}`, `POST …/{id}/sync`, `POST /calendar-feeds/sync-stale` | M6 |
+| Deadline suggestions | `GET /deadline-suggestions`, `POST …/{id}/accept`, `POST …/{id}/dismiss` | M6 |
+| Notifications | `GET /notifications`, `POST /notifications/{id}/read` | M8 |
 
 Requests for another user's resource return `404`, not `403`, so that existence is not revealed.
 
@@ -190,6 +193,11 @@ Requests for another user's resource return `404`, not `403`, so that existence 
 - **Libraries added when needed:** FullCalendar 6.1 (MIT core with drag, resize and named-zone
   support) and Recharts 3, both in M5. Each loads only on the page that uses it. FullCalendar 7 was
   skipped because it replaces the Luxon plugin with a Temporal polyfill, a second date system.
+- **Connected calendars (M6).** `icalendar` (BSD) reads the file and `recurring-ical-events` (LGPL)
+  expands repeating events, including exceptions and moved occurrences. LGPL is fine for a library we
+  import unchanged. Imported events are stored as one-off blocks tagged with their feed, so the
+  scheduling engine needed no change: to it, a class from eClass and a shift typed by hand are the
+  same thing.
 - **Calendar time zones (the M5 spike).** Sessions go into FullCalendar as UTC instants and are drawn
   in the profile's zone through the Luxon plugin, which is correct. The way back is not: at clock
   changes the plugin picks the *second* occurrence of a repeated hour, and places a time that does not
@@ -207,7 +215,7 @@ Requests for another user's resource return `404`, not `403`, so that existence 
 | API integration | Pytest, `TestClient`, **real PostgreSQL** | Endpoints, constraints, tenant isolation, error shape |
 | Migration | Pytest, `alembic check` | Migrations build the schema; models and migrations agree |
 | Frontend | Vitest, Testing Library | Components, routing, API client |
-| End to end | Playwright (M6) | Core journeys in a real browser |
+| End to end | Playwright (M8) | Core journeys in a real browser |
 
 The integration tests use real PostgreSQL because exclusion constraints, partial indexes and
 `timestamptz` behavior do not exist in SQLite. Each test runs in a rolled-back transaction.
@@ -217,9 +225,11 @@ The integration tests use real PostgreSQL because exclusion constraints, partial
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | DST and time zone bugs | Sessions at wrong times | One-rule time model; engine DST test matrix |
-| Greedy heuristic produces poor plans | Weak core feature | Feasibility guard; measurable quality metrics; CP-SAT comparison in M7 |
+| Greedy heuristic produces poor plans | Weak core feature | Feasibility guard; measurable quality metrics; CP-SAT comparison in M9 |
 | Reschedule causes excessive churn | User distrust | Repair-first algorithm; stability metric tested |
 | Concurrent edits corrupt a schedule | Overlaps, lost updates | Exclusion constraint; row lock; version check |
 | Engine too slow in Python | Slow previews | Bounded candidates and horizon; benchmark test in M3 |
 | Calendar drag and drop with named time zones | M5 complexity | Spiked in M5; see section 8 |
+| Fetching links students paste (server-side request forgery) | Probing private networks or cloud metadata | HTTPS only on port 443; every resolved address must be public; the connection is pinned to the checked address; redirects re-checked; size and time capped. See `app/services/feed_fetch.py` |
+| Calendar links contain private tokens | A leaked link exposes the student's calendar | Never returned in full or logged. Stored in plain text for now; encrypting at rest is an M8 item |
 | Scope (this is a large product) | Unfinished areas | Requirement IDs tracked per milestone |

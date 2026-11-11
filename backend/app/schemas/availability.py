@@ -17,6 +17,7 @@ from pydantic import (
     field_validator,
 )
 
+from app.models.enums import BlockCategory
 from app.schemas.common import ShortText
 
 DayOfWeek = Annotated[int, Field(ge=0, le=6)]
@@ -50,6 +51,7 @@ class WindowRead(WeeklyTime):
 
 class RecurringBlockWrite(WeeklyTime):
     title: ShortText
+    category: BlockCategory = BlockCategory.OTHER
 
 
 class RecurringBlockRead(RecurringBlockWrite):
@@ -60,6 +62,7 @@ class RecurringBlockRead(RecurringBlockWrite):
 
 class OneOffBlockWrite(BaseModel):
     title: ShortText
+    category: BlockCategory = BlockCategory.OTHER
     start_at: AwareDatetime
     end_at: AwareDatetime
 
@@ -77,6 +80,7 @@ class OneOffBlockRead(BaseModel):
 
     id: uuid.UUID
     title: str
+    category: BlockCategory
     start_at: datetime
     end_at: datetime
 

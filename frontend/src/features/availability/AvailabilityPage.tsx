@@ -5,7 +5,9 @@ import { Button } from "../../components/ui/Button";
 import { PageHeader, QueryState } from "../../components/ui/States";
 import { formatClock, formatDateTime } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
+import { ConnectedCalendars } from "../calendars/ConnectedCalendars";
 import {
+  categoryLabel,
   DAYS,
   useDeleteOneOffBlock,
   useDeleteRecurringBlock,
@@ -47,11 +49,13 @@ function Section({
 
 function BlockRow({
   title,
+  category,
   when,
   onEdit,
   onDelete,
 }: {
   title: string;
+  category: string;
   when: string;
   onEdit: () => void;
   onDelete: () => void;
@@ -59,7 +63,10 @@ function BlockRow({
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-2.5">
       <div className="min-w-0">
-        <p className="text-sm font-medium">{title}</p>
+        <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+          {title}
+          <span className="rounded-full bg-raised px-2 py-0.5 text-xs font-normal text-ink-muted">{category}</span>
+        </p>
         <p className="text-xs text-ink-muted">{when}</p>
       </div>
       <div className="flex gap-1">
@@ -75,7 +82,7 @@ function BlockRow({
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="py-3 text-sm text-ink-subtle">{children}</p>;
+  return <p className="py-4 text-center text-sm text-ink-muted">{children}</p>;
 }
 
 type EditState<T> = { block?: T } | null;
@@ -86,11 +93,11 @@ function RecurringSection() {
   const [editing, setEditing] = useState<EditState<RecurringBlock>>(null);
   return (
     <Section
-      title="Weekly commitments"
-      description="Lectures, work or anything else that repeats every week."
+      title="Busy every week"
+      description="Classes, regular work shifts, practice: anything that repeats weekly."
       action={
         <Button variant="secondary" onClick={() => setEditing({})}>
-          Add commitment
+          Add weekly
         </Button>
       }
     >
@@ -98,13 +105,14 @@ function RecurringSection() {
       <QueryState query={blocks}>
         {(list) =>
           list.length === 0 ? (
-            <Empty>No weekly commitments.</Empty>
+            <Empty>Nothing yet. Add your classes and regular shifts so study time avoids them.</Empty>
           ) : (
             <ul className="divide-y divide-line">
               {list.map((block) => (
                 <BlockRow
                   key={block.id}
                   title={block.title}
+                  category={categoryLabel(block.category)}
                   when={`${DAYS[block.day_of_week]}, ${formatClock(block.start_minute)} to ${formatClock(block.end_minute)}`}
                   onEdit={() => setEditing({ block })}
                   onDelete={() => remove.mutate(block.id)}
@@ -127,11 +135,11 @@ function OneOffSection({ zone }: { zone: string }) {
   const [editing, setEditing] = useState<EditState<OneOffBlock>>(null);
   return (
     <Section
-      title="Time off"
-      description="One-time periods when you cannot study."
+      title="Busy once"
+      description="A shift on a particular day, plans with friends, appointments, trips."
       action={
         <Button variant="secondary" onClick={() => setEditing({})}>
-          Add time off
+          Add one-time
         </Button>
       }
     >
@@ -139,13 +147,14 @@ function OneOffSection({ zone }: { zone: string }) {
       <QueryState query={blocks}>
         {(list) =>
           list.length === 0 ? (
-            <Empty>No upcoming time off.</Empty>
+            <Empty>Nothing coming up. You can also drag across the schedule calendar to add one.</Empty>
           ) : (
             <ul className="divide-y divide-line">
               {list.map((block) => (
                 <BlockRow
                   key={block.id}
                   title={block.title}
+                  category={categoryLabel(block.category)}
                   when={`${formatDateTime(block.start_at, zone)} to ${formatDateTime(block.end_at, zone)}`}
                   onEdit={() => setEditing({ block })}
                   onDelete={() => remove.mutate(block.id)}
@@ -169,13 +178,22 @@ export function AvailabilityPage() {
 
   return (
     <>
-      <PageHeader title="Availability" subtitle={`When you can study. Times are in ${zone}.`} />
+      <PageHeader
+        title="Your week"
+        subtitle={`When you can study and what you're busy with. Times are in ${zone}.`}
+      />
       <div className="space-y-5">
         <Section title="Weekly study hours" description="The times you are generally free to study.">
           <QueryState query={windows}>{(data) => <WeeklyEditor initial={data} />}</QueryState>
         </Section>
         <RecurringSection />
         <OneOffSection zone={zone} />
+        <Section
+          title="Connected calendars"
+          description="Paste a calendar link, like your YorkU eClass calendar, and it stays in sync."
+        >
+          <ConnectedCalendars />
+        </Section>
         <Section title="Study preferences" description="How your schedule should be shaped.">
           <QueryState query={preferences}>{(data) => <PreferencesForm initial={data} />}</QueryState>
         </Section>

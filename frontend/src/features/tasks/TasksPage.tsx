@@ -9,6 +9,7 @@ import { ConfirmDialog } from "../../components/ui/Modal";
 import { EmptyState, PageHeader, QueryState } from "../../components/ui/States";
 import { formatDateTime, formatDuration, isPast } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
+import { DeadlineSuggestions } from "../calendars/DeadlineSuggestions";
 import { useCourses, type Course } from "../courses/api";
 import {
   labelFor,
@@ -139,6 +140,8 @@ export function TasksPage() {
           </Button>
         }
       />
+
+      <DeadlineSuggestions zone={zone} />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <SelectField

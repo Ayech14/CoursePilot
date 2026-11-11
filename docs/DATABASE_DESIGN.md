@@ -12,6 +12,9 @@ erDiagram
     users ||--o{ availability_windows : defines
     users ||--o{ recurring_blocks : defines
     users ||--o{ one_off_blocks : defines
+    users ||--o{ calendar_feeds : connects
+    calendar_feeds ||--o{ one_off_blocks : imports
+    calendar_feeds ||--o{ deadline_suggestions : finds
     users ||--o{ courses : owns
     users ||--o{ tasks : owns
     users ||--o{ study_sessions : owns
@@ -66,9 +69,19 @@ so separate tables would duplicate them. For an exam, `deadline_at` is the exam'
 
 **`availability_windows`**: `user_id`, `day_of_week` (0 = Monday), `start_minute`, `end_minute`.
 
-**`recurring_blocks`**: same shape plus `title`. Weekly commitments such as lectures or a job.
+**`recurring_blocks`**: same shape plus `title` and `category` (`class`, `work`, `social`, `personal`, `other`). Weekly commitments such as lectures or a regular shift.
 
-**`one_off_blocks`**: `user_id`, `title`, `start_at`, `end_at`. A dentist appointment or trip.
+**`one_off_blocks`**: `user_id`, `title`, `category`, `start_at`, `end_at`, and `feed_id` with
+`external_uid` for imported events (a CHECK keeps the two set together). A shift, a night out, a trip.
+Imported rows are replaced on each sync and cannot be edited through the API.
+
+**`calendar_feeds`**: `user_id`, `name`, `url` (unique per user, at most 2000 characters),
+`last_attempt_at`, `last_synced_at`, `last_error`, `busy_count`. Deleting a feed deletes its blocks
+and open suggestions.
+
+**`deadline_suggestions`**: `user_id`, `feed_id`, `external_uid` (unique per feed), `title`, `due_at`,
+`course_id` (a guess; `SET NULL`), `status` (`pending`, `accepted`, `dismissed`), `task_id`. Decided
+suggestions are kept so that a later sync does not ask again.
 
 Recurring and one-off blocks are separate tables because one is a wall-clock pattern and the
 other a pair of instants. A single table would need columns that are null depending on a type flag.

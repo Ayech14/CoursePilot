@@ -7,12 +7,14 @@ is covered. Forgetting to protect or check a route cannot go unnoticed.
 import re
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.services import feed_fetch
 from tests.integration.helpers import (
     API,
     Headers,
@@ -66,7 +68,29 @@ ID_ROUTES: dict[tuple[str, str], dict[str, Any] | None] = {
     ("POST", "/sessions/{session_id}/resume"): None,
     ("POST", "/sessions/{session_id}/finish"): None,
     ("POST", "/sessions/{session_id}/discard"): None,
+    ("PATCH", "/calendar-feeds/{feed_id}"): {"name": "Hijacked"},
+    ("POST", "/calendar-feeds/{feed_id}/sync"): None,
+    ("DELETE", "/calendar-feeds/{feed_id}"): None,
+    ("POST", "/deadline-suggestions/{suggestion_id}/accept"): {"estimated_minutes": 60},
+    ("POST", "/deadline-suggestions/{suggestion_id}/dismiss"): None,
 }
+
+
+def _feed() -> bytes:
+    """One deadline and one busy time, a few days from now, so both fall inside the horizon."""
+    soon = (datetime.now(UTC) + timedelta(days=3)).strftime("%Y%m%d")
+    return (
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
+        f"BEGIN:VEVENT\r\nUID:due\r\nSUMMARY:Due\r\nDTSTART:{soon}T045900Z\r\n"
+        f"DTEND:{soon}T045900Z\r\nEND:VEVENT\r\n"
+        f"BEGIN:VEVENT\r\nUID:busy\r\nSUMMARY:Busy\r\nDTSTART:{soon}T100000Z\r\n"
+        f"DTEND:{soon}T110000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+    ).encode()
+
+
+@pytest.fixture(autouse=True)
+def offline_calendars(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(feed_fetch, "fetch_calendar", lambda url: _feed())
 
 
 def all_routes() -> set[tuple[str, str]]:
@@ -114,7 +138,15 @@ def _seed(client: TestClient, owner: Headers) -> dict[str, tuple[str, str]]:
         headers=owner,
     ).json()["id"]
     proposal = client.post(f"{API}/schedule/preview", headers=owner).json()["id"]
+    feed = client.post(
+        f"{API}/calendar-feeds",
+        json={"name": "School", "url": "https://cal.example.com/a.ics"},
+        headers=owner,
+    ).json()["id"]
+    suggestion = client.get(f"{API}/deadline-suggestions", headers=owner).json()[0]["id"]
     return {
+        "feed_id": (feed, f"{API}/calendar-feeds"),
+        "suggestion_id": (suggestion, f"{API}/deadline-suggestions"),
         "session_id": (
             session,
             f"{API}/sessions?start=2099-01-01T00:00:00Z&end=2100-01-01T00:00:00Z",
@@ -152,7 +184,25 @@ LISTS: dict[str, ListRequest] = {
     "tasks": lambda c, h: c.get(f"{API}/tasks", headers=h).json()["items"],
     "recurring": lambda c, h: c.get(f"{API}/availability/recurring-blocks", headers=h).json(),
     "one_off": lambda c, h: c.get(f"{API}/availability/one-off-blocks", headers=h).json(),
+    "feeds": lambda c, h: c.get(f"{API}/calendar-feeds", headers=h).json(),
+    "suggestions": lambda c, h: c.get(f"{API}/deadline-suggestions", headers=h).json(),
+    "imported_busy": lambda c, h: [
+        item for item in _busy_this_week(c, h) if item["source"] == "calendar"
+    ],
 }
+
+
+def _busy_this_week(client: TestClient, headers: Headers) -> list[Any]:
+    response = client.get(
+        f"{API}/busy-times",
+        params={
+            "start": datetime.now(UTC).isoformat(),
+            "end": (datetime.now(UTC) + timedelta(days=7)).isoformat(),
+        },
+        headers=headers,
+    )
+    result: list[Any] = response.json()
+    return result
 
 
 @pytest.mark.parametrize("name", sorted(LISTS))

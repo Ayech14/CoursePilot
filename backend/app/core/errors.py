@@ -149,6 +149,18 @@ class InvalidFieldsError(AppError):
         )
 
 
+class ImportedBlockError(AppError):
+    status_code = 409
+    code = "imported_block"
+    message = "This comes from a connected calendar. Change it there, or disconnect the calendar."
+
+
+class SuggestionClosedError(AppError):
+    status_code = 409
+    code = "suggestion_closed"
+    message = "This deadline has already been added or dismissed."
+
+
 class ServiceUnavailableError(AppError):
     status_code = 503
     code = "service_unavailable"
