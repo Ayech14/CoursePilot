@@ -177,7 +177,7 @@ export function TasksPage() {
             />
           ) : (
             <>
-              <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+              <ul className="divide-y divide-line card">
                 {items.map((task) => (
                   <TaskRow
                     key={task.id}

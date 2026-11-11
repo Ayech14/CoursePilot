@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function Card({
@@ -12,7 +13,7 @@ export function Card({
   action?: ReactNode;
 }) {
   return (
-    <section aria-label={title} className="rounded-xl border border-line bg-surface p-5">
+    <section aria-label={title} className="card p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">{title}</h2>
@@ -25,10 +26,30 @@ export function Card({
   );
 }
 
-export function StatTile({ label, value, note }: { label: string; value: string; note?: string }) {
+export function StatTile({
+  label,
+  value,
+  note,
+  icon: Icon,
+  tone = "brand",
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  icon?: LucideIcon;
+  tone?: "brand" | "accent" | "danger";
+}) {
+  const chip = { brand: "bg-brand-soft text-brand", accent: "bg-accent-soft text-accent", danger: "bg-danger-soft text-danger" }[tone];
   return (
-    <div className="rounded-xl border border-line bg-surface p-5">
-      <p className="text-xs text-ink-subtle">{label}</p>
+    <div className="card p-5">
+      <p className="flex items-center gap-2 text-xs text-ink-subtle">
+        {Icon && (
+          <span className={`flex size-6 items-center justify-center rounded-lg ${chip}`}>
+            <Icon aria-hidden="true" className="size-3.5" />
+          </span>
+        )}
+        {label}
+      </p>
       <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
       {note && <p className="mt-0.5 text-xs text-ink-muted">{note}</p>}
     </div>
@@ -39,7 +60,7 @@ export function CourseDot({ color }: { color: string | null }) {
   return (
     <span
       aria-hidden="true"
-      className="size-2 shrink-0 rounded-full"
+      className="inline-block size-2 shrink-0 rounded-full"
       style={{ backgroundColor: color ?? "var(--color-ink-subtle)" }}
     />
   );

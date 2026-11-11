@@ -1,23 +1,63 @@
 @import "@fontsource-variable/inter";
 @import "tailwindcss";
 
-/* Design tokens. Components use these names, so the palette can change in one place. */
+/*
+ * Design tokens. Components use only these names, so a theme is just a second set of values.
+ * Dark is the default; light overrides it below. Contrast is enforced by src/theme.test.ts.
+ */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
-  --color-canvas: #12161d;
-  --color-surface: #1a1f28;
-  --color-raised: #232935;
-  --color-line: #2f3644;
-  --color-ink: #eceff4;
-  --color-ink-muted: #a3acbb;
-  --color-ink-subtle: #828c9c;
-  --color-brand: #45bfae;
-  --color-brand-hover: #5dcdbd;
-  --color-brand-ink: #06231f;
-  --color-brand-soft: #173a37;
-  --color-danger: #f28b82;
-  --color-danger-soft: #3b2224;
+  --color-canvas: #111318;
+  --color-surface: #181b22;
+  --color-raised: #22262f;
+  --color-line: #2e333e;
+  --color-ink: #f1f2f5;
+  --color-ink-muted: #aeb4c0;
+  --color-ink-subtle: #9198a6;
+  --color-brand: #4fd1bd;
+  --color-brand-hover: #72dccb;
+  --color-brand-ink: #04231e;
+  --color-brand-soft: #15342f;
+  --color-accent: #f5b454;
+  --color-accent-soft: #3a2b16;
+  --color-danger: #f4978e;
+  --color-danger-soft: #3d2326;
+  --color-overlay: rgb(5 6 9 / 0.7);
+  --color-chart-neutral: #6b7585;
+  --color-on-swatch: #111318;
+
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset;
+  --shadow-lift: 0 12px 32px -12px rgb(0 0 0 / 0.6);
+}
+
+:root[data-theme="light"] {
+  --color-canvas: #f7f6f3;
+  --color-surface: #ffffff;
+  --color-raised: #f1efea;
+  --color-line: #e3e0d9;
+  --color-ink: #1b1e25;
+  --color-ink-muted: #4c5361;
+  --color-ink-subtle: #5f6673;
+  --color-brand: #0a7364;
+  --color-brand-hover: #085f53;
+  --color-brand-ink: #ffffff;
+  --color-brand-soft: #dcf2ee;
+  --color-accent: #9a5b06;
+  --color-accent-soft: #fbefd9;
+  --color-danger: #b42318;
+  --color-danger-soft: #fde8e6;
+  --color-overlay: rgb(27 30 37 / 0.35);
+  --color-chart-neutral: #a3a9b4;
+
+  --shadow-card: 0 1px 2px rgb(27 30 37 / 0.04), 0 1px 1px rgb(27 30 37 / 0.03);
+  --shadow-lift: 0 16px 40px -16px rgb(27 30 37 / 0.25);
+
+  color-scheme: light;
+}
+
+:root {
+  color-scheme: dark;
 }
 
 @layer base {
@@ -30,13 +70,37 @@
   }
 }
 
+/* The standard container for a block of content. */
+@utility card {
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* A short fade as a page opens. Nothing moves for people who ask for reduced motion. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@utility page-enter {
+  animation: page-enter 180ms ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 /* FullCalendar reads these variables, so the calendar follows the same tokens as everything else. */
 .fc {
   --fc-border-color: var(--color-line);
   --fc-page-bg-color: var(--color-surface);
   --fc-neutral-bg-color: var(--color-raised);
-  --fc-non-business-color: rgb(0 0 0 / 0.22);
-  --fc-today-bg-color: rgb(69 191 174 / 0.07);
+  --fc-non-business-color: color-mix(in srgb, var(--color-canvas) 55%, transparent);
+  --fc-today-bg-color: color-mix(in srgb, var(--color-brand) 7%, transparent);
   --fc-now-indicator-color: var(--color-danger);
   --fc-button-bg-color: var(--color-raised);
   --fc-button-border-color: var(--color-line);
@@ -93,7 +157,7 @@
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 6px,
-    rgb(255 255 255 / 0.04) 6px 12px
+    color-mix(in srgb, var(--color-ink) 5%, transparent) 6px 12px
   );
   color: var(--color-ink-muted);
   cursor: pointer;

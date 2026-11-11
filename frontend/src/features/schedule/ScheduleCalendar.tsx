@@ -28,7 +28,7 @@ import {
 } from "./api";
 import { movedTimes, resizedTimes } from "./calendarTimes";
 
-const NO_COURSE_COLOR = "#7b8698";
+const NO_COURSE_COLOR = "var(--color-ink-subtle)";
 const NARROW_SCREEN = "(max-width: 639px)";
 
 export interface RefusedMove {
@@ -207,7 +207,7 @@ export function ScheduleCalendar({ zone, onOpen, onRefused, onOpenBusy, onSelect
       )}
       <div
         aria-busy={sessions.isFetching}
-        className={`rounded-xl border border-line bg-surface p-3 transition-opacity sm:p-4 ${sessions.isPlaceholderData ? "opacity-60" : ""}`}
+        className={`card p-3 transition-opacity sm:p-4 ${sessions.isPlaceholderData ? "opacity-60" : ""}`}
       >
         <FullCalendar
           plugins={[timeGridPlugin, interactionPlugin, luxonPlugin]}

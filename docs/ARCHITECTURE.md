@@ -190,6 +190,11 @@ Requests for another user's resource return `404`, not `403`, so that existence 
 - **Dates in forms use the profile's time zone**, never the browser's, through `lib/datetime.ts`.
   Luxon does this work because `datetime-local` inputs have no zone and the platform has no widely
   supported way to convert one in a named zone. FullCalendar's named-zone support needs it in M5 too.
+- **Themes (M7).** Every colour is a CSS variable in `src/index.css`; dark is the default and
+  `:root[data-theme="light"]` overrides the values. Components never name a colour directly, so a
+  theme cannot miss a screen. A small script in `index.html` sets the theme before the first paint;
+  the choice lives in `localStorage` because it is a display preference, not account data. The
+  inline script will need a hash in the Content Security Policy planned for M8.
 - **Libraries added when needed:** FullCalendar 6.1 (MIT core with drag, resize and named-zone
   support) and Recharts 3, both in M5. Each loads only on the page that uses it. FullCalendar 7 was
   skipped because it replaces the Luxon plugin with a Temporal polyfill, a second date system.

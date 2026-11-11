@@ -15,7 +15,7 @@ import { ProgressBar } from "./CoursesPage";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
+    <div className="card p-4">
       <p className="text-xs text-ink-muted">{label}</p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
@@ -82,7 +82,7 @@ function CourseView({ course, zone }: { course: CourseDetail; zone: string }) {
             No open tasks with a deadline.
           </p>
         ) : (
-          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="divide-y divide-line card">
             {course.upcoming_tasks.map((task) => (
               <li key={task.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
                 <span className="min-w-0 truncate font-medium">{task.title}</span>

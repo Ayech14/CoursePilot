@@ -94,7 +94,7 @@ export function DeadlineSuggestions({ zone }: { zone: string }) {
   if (list.length === 0) return null;
 
   return (
-    <section aria-label="Deadlines from your calendars" className="mb-6 rounded-xl border border-brand/50 bg-surface p-5">
+    <section aria-label="Deadlines from your calendars" className="mb-6 rounded-2xl border border-brand/50 bg-surface shadow-[var(--shadow-card)] p-5">
       <h2 className="flex items-center gap-2 text-sm font-semibold">
         <CalendarCheck aria-hidden="true" className="size-4 text-brand" />
         {list.length === 1 ? "1 deadline" : `${list.length} deadlines`} from your calendars

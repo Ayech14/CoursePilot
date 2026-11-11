@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { ErrorAlert } from "../../components/ui/Alert";
@@ -6,6 +7,8 @@ import { Button } from "../../components/ui/Button";
 import { SelectField, TextField } from "../../components/ui/Field";
 import { api, ApiError, type User } from "../../lib/api";
 import { timeZoneOptions } from "../../lib/timezones";
+import type { ThemeChoice } from "../../lib/theme";
+import { useTheme } from "../../lib/useTheme";
 import { useAuth } from "../auth/AuthContext";
 
 function ProfileForm({ user }: { user: User }) {
@@ -58,15 +61,51 @@ function ProfileForm({ user }: { user: User }) {
   );
 }
 
+const THEME_OPTIONS: { value: ThemeChoice; label: string; icon: LucideIcon }[] = [
+  { value: "system", label: "Match device", icon: Monitor },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+];
+
+function ThemePicker() {
+  const [choice, setChoice] = useTheme();
+  return (
+    <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-2">
+      {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+        <button
+          key={value}
+          type="button"
+          role="radio"
+          aria-checked={choice === value}
+          onClick={() => setChoice(value)}
+          className={`flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-sm transition-colors ${
+            choice === value
+              ? "border-brand bg-brand-soft text-ink"
+              : "border-line text-ink-muted hover:bg-raised hover:text-ink"
+          }`}
+        >
+          <Icon aria-hidden="true" className="size-5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const { user } = useAuth();
   if (!user) return null;
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-      <section className="mt-8 max-w-lg rounded-xl border border-line bg-surface p-6">
+      <section className="mt-8 max-w-lg card p-6">
         <h2 className="mb-5 text-base font-semibold">Profile</h2>
         <ProfileForm user={user} />
+      </section>
+      <section className="mt-5 max-w-lg card p-6">
+        <h2 className="text-base font-semibold">Appearance</h2>
+        <p className="mt-0.5 mb-4 text-sm text-ink-muted">Saved on this device.</p>
+        <ThemePicker />
       </section>
     </>
   );

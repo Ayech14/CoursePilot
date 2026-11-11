@@ -30,7 +30,7 @@ function CourseCard({ course, zone }: { course: Course; zone: string }) {
   return (
     <Link
       to={`/courses/${course.id}`}
-      className="block rounded-xl border border-line bg-surface p-5 transition-colors hover:border-ink-subtle"
+      className="block card p-5 transition-colors hover:border-ink-subtle"
     >
       <div className="flex items-center gap-2.5">
         <span

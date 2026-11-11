@@ -47,8 +47,10 @@ deadline suggestions. L1–L4.
 **Done when:** a student's classes, shifts and plans all shape the schedule, and a school calendar
 link stays in sync without creating anything the student did not confirm.
 
-### M7: Visual Refresh — Not started
-A warmer dark theme and a light theme, switchable in Settings. Every screen checked in both.
+### M7: Visual Refresh — Done
+A warmer dark theme and a light theme, switchable from the sidebar and in Settings (match device,
+light, dark). Every screen checked in both.
+**Done when:** both themes pass WCAG AA contrast for every text pairing, enforced by a test.
 
 ### M8: Production Readiness — Not started
 Notifications, rate limiting, security review, Playwright journeys, performance pass, production
@@ -160,7 +162,21 @@ The browser journey found a crash the mocked tests could not: the preview FullCa
 you drag across empty time has no session, and the renderer assumed one. With no error boundary,
 the whole app went blank. Both are fixed and tested, and a page crash now leaves the menu usable.
 
+### M7 verification record (2026-11-10)
+
+| Check | Result |
+|-------|--------|
+| Frontend tests, lint, types, production build | 210 passed, clean |
+| Contrast, read from the real stylesheet | Every text pairing meets WCAG AA (4.5:1) in both themes; 40 checks |
+| Theme choice | Follows the device by default; an explicit choice wins and is remembered; set before first paint, so no flash |
+| Manual browser check, both themes | Login, dashboard, schedule calendar with busy times, analytics charts, Your week, tasks, settings; phone width has no sideways scroll |
+
+The check found a bug older than this milestone: course colour dots inside text rows had no size
+and were invisible. Fixed. Fade-ins appear paused in a hidden browser pane, which is the browser
+saving work, not a fault; they run normally on screen and not at all with reduced motion.
+
 **Known gaps carried forward:**
+- The theme is saved per device, not per account. A preference column can be added if wanted.
 - Untested against a real YorkU eClass link, which needs the owner's account. The format it uses is covered by tests.
 - Calendar links are stored unencrypted (M8).
 - Login rate limiting is not implemented (M8).

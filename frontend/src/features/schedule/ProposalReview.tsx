@@ -124,7 +124,7 @@ export function ProposalReview({ proposal, zone, applying, discarding, onApply, 
   return (
     <section
       aria-label="Proposed schedule"
-      className="mb-8 rounded-xl border border-brand/50 bg-surface p-5 sm:p-6"
+      className="mb-8 rounded-2xl border border-brand/50 bg-surface shadow-[var(--shadow-card)] p-5 sm:p-6"
     >
       <h2 className="text-base font-semibold">
         {nothingToDo ? "Your schedule is already up to date" : "Review proposed changes"}

@@ -45,14 +45,14 @@ export function Modal({ title, onClose, children }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:py-16">
-      <div aria-hidden="true" className="fixed inset-0 bg-black/60" onClick={onClose} />
+      <div aria-hidden="true" className="fixed inset-0 bg-overlay backdrop-blur-[2px]" onClick={onClose} />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onKeyDown={handleKeyDown}
-        className="relative w-full max-w-lg rounded-xl border border-line bg-surface p-6"
+        className="card relative w-full max-w-lg p-6 shadow-[var(--shadow-lift)]"
       >
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 id={titleId} className="text-lg font-semibold tracking-tight">

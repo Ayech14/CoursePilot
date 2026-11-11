@@ -72,7 +72,7 @@ export function CourseFormDialog({ course, onClose }: Props) {
                 aria-pressed={color === option.value}
                 onClick={() => setColor(option.value)}
                 style={{ backgroundColor: option.value }}
-                className="flex size-8 items-center justify-center rounded-full text-canvas"
+                className="flex size-8 items-center justify-center rounded-full text-on-swatch"
               >
                 {color === option.value && <Check aria-hidden="true" className="size-4" />}
               </button>

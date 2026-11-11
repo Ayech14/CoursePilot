@@ -35,7 +35,7 @@ function OpenTimer({ timer, fetchedAt }: { timer: ActiveTimer; fetchedAt: number
   return (
     <section
       aria-label="Study timer"
-      className="mb-6 rounded-xl border border-brand/50 bg-surface px-4 py-3 sm:px-5"
+      className="mb-6 rounded-2xl border border-brand/50 bg-surface shadow-[var(--shadow-card)] px-4 py-3 sm:px-5"
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1">

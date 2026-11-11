@@ -206,7 +206,7 @@ export function SchedulePage() {
       {showBanner && status.data && (
         <section
           aria-label="Schedule needs an update"
-          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-5 py-4"
+          className="mb-6 flex flex-wrap items-center justify-between gap-3 card px-5 py-4"
         >
           <div>
             <h2 className="text-sm font-semibold">Your schedule needs an update</h2>
@@ -295,7 +295,7 @@ export function SchedulePage() {
                 {groupByLocalDay(list, (session) => session.start_at, zone).map((day) => (
                   <section key={day.heading}>
                     <h2 className="mb-2 text-sm font-semibold">{day.heading}</h2>
-                    <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+                    <ul className="divide-y divide-line card">
                       {day.items.map((session) => (
                         <SessionRow
                           key={session.id}

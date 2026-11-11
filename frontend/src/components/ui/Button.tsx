@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from "react";
 import { Spinner } from "./Spinner";
 
 const VARIANTS = {
-  primary: "bg-brand text-brand-ink hover:bg-brand-hover",
+  primary: "bg-brand text-brand-ink shadow-sm hover:bg-brand-hover",
   secondary: "border border-line bg-raised text-ink hover:bg-line",
   danger: "bg-danger text-canvas hover:opacity-90",
   ghost: "text-ink-muted hover:bg-raised hover:text-ink",
@@ -30,7 +30,7 @@ export function Button({
       {...rest}
       type={type}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold whitespace-nowrap transition active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 disabled:active:translate-y-0 ${
         compact ? "h-8 px-2.5" : "h-10 px-4"
       } ${VARIANTS[variant]} ${className}`}
     >

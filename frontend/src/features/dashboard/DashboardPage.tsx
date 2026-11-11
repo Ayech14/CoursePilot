@@ -1,9 +1,9 @@
-import { Sparkles, TriangleAlert } from "lucide-react";
+import { CalendarClock, ListChecks, Sparkles, Timer, TriangleAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Card, CourseDot, QuietNote, RankedBars, StatTile } from "../../components/ui/Figures";
 import { EmptyState, QueryState } from "../../components/ui/States";
-import { formatDateTime, formatDuration, formatTime } from "../../lib/datetime";
+import { formatDateTime, formatDuration, formatTime, minutesBetween } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
 import type { StudySession } from "../schedule/api";
 import { StartSessionButton } from "../timer/StartSessionButton";
@@ -115,6 +115,17 @@ function Deadlines({ items, zone, empty }: { items: DeadlineItem[]; zone: string
   );
 }
 
+/** One sentence about today, built only from the student's own sessions. */
+function todayLine(data: Dashboard, zone: string): string | null {
+  if (data.today.length === 0) return null;
+  const left = data.today.filter((s) => s.status === "planned" || s.status === "in_progress" || s.status === "paused");
+  const planned = left.reduce((total, s) => total + minutesBetween(s.start_at, s.end_at), 0);
+  if (left.length === 0) return "Every session for today is behind you. Nice work.";
+  const next = left[0]!;
+  const count = left.length === 1 ? "1 session" : `${left.length} sessions`;
+  return `${count} left today, ${formatDuration(planned)} in all. Next: ${next.task_title} at ${formatTime(next.start_at, zone)}.`;
+}
+
 function hasAnything(data: Dashboard): boolean {
   return data.workload.length > 0 || data.today.length > 0;
 }
@@ -151,10 +162,17 @@ function Summary({ data, zone }: { data: Dashboard; zone: string }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Studied this week" value={formatDuration(data.week.studied_minutes)} note="Timed sessions" />
-        <StatTile label="Still planned this week" value={formatDuration(data.week.planned_minutes)} />
-        <StatTile label="Tasks remaining" value={String(data.tasks.remaining)} />
         <StatTile
+          icon={Timer}
+          label="Studied this week"
+          value={formatDuration(data.week.studied_minutes)}
+          note="Timed sessions"
+        />
+        <StatTile icon={CalendarClock} label="Still planned this week" value={formatDuration(data.week.planned_minutes)} />
+        <StatTile icon={ListChecks} label="Tasks remaining" value={String(data.tasks.remaining)} />
+        <StatTile
+          icon={TriangleAlert}
+          tone={data.tasks.overdue > 0 ? "danger" : "brand"}
           label="Overdue"
           value={String(data.tasks.overdue)}
           note={data.tasks.overdue > 0 ? "See the list below" : undefined}
@@ -243,14 +261,25 @@ export function DashboardPage() {
     timeZone: user.timezone,
   }).format(now);
 
+  const line = dashboard.data ? todayLine(dashboard.data, user.timezone) : null;
+
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        {greetingFor(user.timezone, now)}, {user.display_name}
-      </h1>
-      <p className="mt-1 mb-8 text-sm text-ink-muted">
-        {today} · {user.timezone}
-      </p>
+      <section className="relative mb-6 overflow-hidden rounded-2xl border border-line bg-surface px-6 py-7 shadow-[var(--shadow-card)] sm:px-8">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-brand-soft),transparent_60%),radial-gradient(ellipse_at_bottom_left,var(--color-accent-soft),transparent_55%)] opacity-80"
+        />
+        <div className="relative">
+          <p className="text-sm font-medium text-brand">
+            {today} · {user.timezone}
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+            {greetingFor(user.timezone, now)}, {user.display_name}
+          </h1>
+          {line && <p className="mt-2 max-w-xl text-sm text-ink-muted">{line}</p>}
+        </div>
+      </section>
       <QueryState query={dashboard}>
         {(data) => (hasAnything(data) ? <Summary data={data} zone={user.timezone} /> : <FirstRun />)}
       </QueryState>

@@ -3,7 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
+    <script>
+      // Runs before anything is drawn, so a light-theme user never sees a dark flash.
+      // Keep in step with src/lib/theme.ts.
+      (function () {
+        try {
+          var choice = localStorage.getItem("coursepilot.theme");
+          var light =
+            choice === "light" ||
+            (choice !== "dark" && window.matchMedia("(prefers-color-scheme: light)").matches);
+          if (light) document.documentElement.dataset.theme = "light";
+        } catch (e) {}
+      })();
+    </script>
     <title>CoursePilot</title>
   </head>
   <body>

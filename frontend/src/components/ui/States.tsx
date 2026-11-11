@@ -38,8 +38,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <section className="flex flex-col items-center rounded-xl border border-dashed border-line px-6 py-14 text-center">
-      <Icon aria-hidden="true" className="size-7 text-ink-subtle" />
+    <section className="flex flex-col items-center rounded-2xl border border-dashed border-line px-6 py-14 text-center">
+      <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+        <Icon aria-hidden="true" className="size-6" />
+      </span>
       <h2 className="mt-4 text-base font-semibold">{title}</h2>
       <p className="mt-1.5 max-w-md text-sm text-ink-muted">{message}</p>
       {action && <div className="mt-5">{action}</div>}
@@ -67,7 +69,7 @@ export function QueryState<T>({
   if (query.isPending) return <LoadingBlock />;
   if (query.isError) {
     return (
-      <div role="alert" className="rounded-xl border border-line bg-surface px-6 py-10 text-center">
+      <div role="alert" className="card px-6 py-10 text-center">
         <p className="text-sm text-ink">{query.error.message}</p>
         <Button variant="secondary" className="mt-4" onClick={() => void query.refetch()}>
           Try again

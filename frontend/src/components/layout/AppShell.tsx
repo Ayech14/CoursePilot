@@ -1,12 +1,32 @@
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/AuthContext";
 import { TimerBar } from "../../features/timer/TimerBar";
+import { resolveTheme } from "../../lib/theme";
+import { useTheme } from "../../lib/useTheme";
 import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { Logo } from "../ui/Logo";
 import { NAV_ITEMS } from "./navigation";
+
+function ThemeToggle() {
+  const [choice, setChoice] = useTheme();
+  const dark = resolveTheme(choice) === "dark";
+  const Icon = dark ? Sun : Moon;
+  const label = dark ? "Switch to light theme" : "Switch to dark theme";
+  return (
+    <button
+      type="button"
+      onClick={() => setChoice(dark ? "light" : "dark")}
+      aria-label={label}
+      title={label}
+      className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-raised hover:text-ink"
+    >
+      <Icon aria-hidden="true" className="size-4.5" />
+    </button>
+  );
+}
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth();
@@ -22,10 +42,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             to={to}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
+              `group flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-raised text-ink"
-                  : "text-ink-muted hover:bg-raised/60 hover:text-ink"
+                  ? "bg-brand-soft text-ink [&>svg]:text-brand"
+                  : "text-ink-muted hover:bg-raised hover:text-ink"
               }`
             }
           >
@@ -39,6 +59,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <p className="truncate text-sm font-medium">{user?.display_name}</p>
           <p className="truncate text-xs text-ink-subtle">{user?.email}</p>
         </div>
+        <ThemeToggle />
         <button
           type="button"
           onClick={() => void logout()}
@@ -78,7 +99,7 @@ export function AppShell() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-overlay backdrop-blur-[2px]"
             onClick={() => setDrawerOpen(false)}
           />
           <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-line bg-surface">
@@ -110,7 +131,9 @@ export function AppShell() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-10">
         <ErrorBoundary resetKey={pathname}>
           <TimerBar />
-          <Outlet />
+          <div key={pathname} className="page-enter">
+            <Outlet />
+          </div>
         </ErrorBoundary>
       </main>
     </div>

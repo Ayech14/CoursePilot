@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div role="alert" className="rounded-xl border border-line bg-surface px-6 py-12 text-center">
+      <div role="alert" className="card px-6 py-12 text-center">
         <h1 className="text-base font-semibold">Something went wrong on this page</h1>
         <p className="mt-1.5 text-sm text-ink-muted">
           Your data is safe. Reload the page, or open another one from the menu.

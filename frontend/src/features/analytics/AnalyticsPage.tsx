@@ -48,7 +48,7 @@ function Estimates({ data }: { data: Analytics["estimates"] }) {
       </p>
       <ul className="mt-3 flex gap-4 text-xs text-ink-muted" aria-hidden="true">
         <li className="flex items-center gap-1.5">
-          <span className="h-2 w-3 rounded-sm bg-[#6b7585]" /> Estimated
+          <span className="h-2 w-3 rounded-sm bg-chart-neutral" /> Estimated
         </li>
         <li className="flex items-center gap-1.5">
           <span className="h-2 w-3 rounded-sm bg-brand" /> Actual
@@ -64,7 +64,7 @@ function Estimates({ data }: { data: Analytics["estimates"] }) {
               </span>
             </div>
             <div className="space-y-0.5">
-              <div className="h-1.5 rounded-full bg-[#6b7585]" style={{ width: `${(task.estimated_minutes / largest) * 100}%` }} />
+              <div className="h-1.5 rounded-full bg-chart-neutral" style={{ width: `${(task.estimated_minutes / largest) * 100}%` }} />
               <div className="h-1.5 rounded-full bg-brand" style={{ width: `${(task.actual_minutes / largest) * 100}%` }} />
             </div>
           </li>
