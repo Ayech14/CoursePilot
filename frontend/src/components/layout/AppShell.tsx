@@ -1,5 +1,5 @@
-import { LogOut, Menu, Moon, Sun, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/AuthContext";
@@ -33,21 +33,49 @@ function initials(name: string): string {
   return parts.slice(0, 2).map((part) => [...part][0]!.toUpperCase()).join("") || "?";
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+const ICON_BUTTON =
+  "flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-raised hover:text-ink";
+
+function SidebarContent({
+  onNavigate,
+  collapsed = false,
+  onToggle,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggle?: () => void;
+}) {
   const { user, logout } = useAuth();
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  const toggleLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center px-5">
-        <Logo />
+      <div className={`flex h-16 items-center ${collapsed ? "justify-center" : "justify-between px-5 pr-3"}`}>
+        {!collapsed && <Logo />}
+        {onToggle && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={toggleLabel}
+            aria-expanded={!collapsed}
+            title={`${toggleLabel} (Ctrl or ⌘ + \\)`}
+            className={ICON_BUTTON}
+          >
+            <ToggleIcon aria-hidden="true" className="size-4.5" />
+          </button>
+        )}
       </div>
-      <nav aria-label="Main" className="flex-1 space-y-1 px-3 py-2">
+      <nav aria-label="Main" className={`flex-1 space-y-1 py-2 ${collapsed ? "px-2.5" : "px-3"}`}>
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             onClick={onNavigate}
+            title={collapsed ? label : undefined}
             className={({ isActive }) =>
-              `group flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
+              `group flex h-10 items-center gap-3 rounded-lg text-sm font-medium transition-colors ${
+                collapsed ? "justify-center" : "px-3"
+              } ${
                 isActive
                   ? "bg-brand-soft text-ink [&>svg]:text-brand"
                   : "text-ink-muted hover:bg-raised hover:text-ink"
@@ -55,18 +83,21 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             }
           >
             <Icon aria-hidden="true" className="size-4.5 shrink-0" />
-            <span className="flex-1">{label}</span>
+            <span className={collapsed ? "sr-only" : "flex-1"}>{label}</span>
           </NavLink>
         ))}
       </nav>
-      <div className="flex items-center gap-2 border-t border-line p-3">
+      <div
+        className={`flex items-center gap-2 border-t border-line p-3 ${collapsed ? "flex-col" : ""}`}
+      >
         <span
           aria-hidden="true"
-          className="ml-1 flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-soft to-accent-soft text-sm font-semibold text-ink ring-1 ring-line"
+          title={collapsed ? user?.display_name : undefined}
+          className={`flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-soft to-accent-soft text-sm font-semibold text-ink ring-1 ring-line ${collapsed ? "" : "ml-1"}`}
         >
           {initials(user?.display_name ?? "")}
         </span>
-        <div className="min-w-0 flex-1">
+        <div className={collapsed ? "sr-only" : "min-w-0 flex-1"}>
           <p className="truncate text-sm font-medium">{user?.display_name}</p>
           <p className="truncate text-xs text-ink-subtle">{user?.email}</p>
         </div>
@@ -76,7 +107,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           onClick={() => void logout()}
           aria-label="Sign out"
           title="Sign out"
-          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-raised hover:text-ink"
+          className={ICON_BUTTON}
         >
           <LogOut aria-hidden="true" className="size-4.5" />
         </button>
@@ -85,8 +116,37 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+const SIDEBAR_STORAGE_KEY = "coursepilot.sidebar";
+
+/** Whether the desktop sidebar is folded down to icons. Remembered on this device. */
+function useCollapsedSidebar(): [boolean, () => void] {
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_STORAGE_KEY) === "collapsed");
+  const toggle = useCallback(() => {
+    setCollapsed((current) => {
+      const next = !current;
+      if (next) localStorage.setItem(SIDEBAR_STORAGE_KEY, "collapsed");
+      else localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "\\") {
+        event.preventDefault();
+        toggle();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [toggle]);
+
+  return [collapsed, toggle];
+}
+
 export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [collapsed, toggleCollapsed] = useCollapsedSidebar();
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -101,9 +161,13 @@ export function AppShell() {
   const currentLabel = NAV_ITEMS.find((item) => pathname.startsWith(item.to))?.label;
 
   return (
-    <div className="min-h-dvh lg:pl-64">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-line bg-surface lg:block">
-        <SidebarContent />
+    <div className={`min-h-dvh transition-[padding] duration-200 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 hidden border-r border-line bg-surface transition-[width] duration-200 lg:block ${
+          collapsed ? "w-16" : "w-64"
+        }`}
+      >
+        <SidebarContent collapsed={collapsed} onToggle={toggleCollapsed} />
       </aside>
 
       {drawerOpen && (
@@ -139,7 +203,7 @@ export function AppShell() {
         <span className="text-sm font-semibold">{currentLabel ?? "CoursePilot"}</span>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-10">
+      <main className={`mx-auto px-4 py-8 sm:px-8 lg:py-10 ${collapsed ? "max-w-7xl" : "max-w-6xl"}`}>
         <ErrorBoundary resetKey={pathname}>
           <TimerBar />
           <div key={pathname} className="page-enter">

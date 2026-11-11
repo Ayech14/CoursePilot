@@ -76,3 +76,31 @@ describe("resizedTimes", () => {
     expect(resizedTimes("2026-11-01T01:30:00-04:00", original, ZONE).end_at).toBe("2026-11-01T05:30:00.000Z");
   });
 });
+
+describe("visibleHours", () => {
+  const zone = "America/Toronto";
+
+  it("is 7 AM to 11 PM for usual study hours, with an hour either side of 8 to 10", async () => {
+    const { visibleHours } = await import("./ScheduleCalendar");
+    expect(visibleHours([{ start_minute: 540, end_minute: 1260 }], [], zone)).toEqual({
+      slotMinTime: "07:00:00",
+      slotMaxTime: "23:00:00",
+    });
+  });
+
+  it("stretches to show early study hours and busy times in the profile's zone", async () => {
+    const { visibleHours } = await import("./ScheduleCalendar");
+    // A 6:15 AM shift in Toronto, stored in UTC.
+    const shift = { start_at: "2026-11-16T11:15:00Z", end_at: "2026-11-16T14:00:00Z" };
+    expect(visibleHours([{ start_minute: 420, end_minute: 1440 }], [shift], zone)).toEqual({
+      slotMinTime: "05:00:00",
+      slotMaxTime: "24:00:00",
+    });
+  });
+
+  it("shows the whole day for something that crosses midnight", async () => {
+    const { visibleHours } = await import("./ScheduleCalendar");
+    const lateNight = { start_at: "2026-11-17T03:00:00Z", end_at: "2026-11-17T06:00:00Z" };
+    expect(visibleHours([], [lateNight], zone)).toEqual({ slotMinTime: "00:00:00", slotMaxTime: "24:00:00" });
+  });
+});

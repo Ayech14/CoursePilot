@@ -190,6 +190,14 @@ says plainly when no study hours are set. Calendar titles from eClass with HTML 
 ("&amp;amp;") are now decoded on import. Covered by new tests; each was checked to fail when the
 behaviour it guards was broken on purpose.
 
+**Layout follow-up, from the owner's use:** the desktop sidebar folds down to an icon rail (button
+at its top, or Ctrl/⌘ + \\), remembered per device; links keep their names for screen readers and
+show them on hover. The schedule calendar no longer scrolls inside the page: it draws only the hours
+in use (study hours, busy times and sessions on screen, an hour either side, never less than 8 AM to
+10 PM) at their natural height, with the day headers pinned while the page scrolls. The nested
+scroll box was what made scrolling feel wrong. Folding the sidebar exposed a FullCalendar sizing bug
+(it re-measures only on window resize); the calendar now watches its own box.
+
 **Second pass check (2026-11-10):** 235 frontend tests passed; lint, types and build clean. New
 tests cover the due labels (another zone and the day clocks went back), free hours per day, the
 dashboard header figures, and that ink text stays at 4.5:1 on a wash of any course colour, from

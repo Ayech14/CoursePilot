@@ -122,6 +122,21 @@
   font-size: 0.8125rem;
 }
 
+/*
+ * Day headers stay in view while the page scrolls, below the phone header bar when it is shown.
+ * FullCalendar adds its own stylesheet at runtime, after this one, hence the doubled class.
+ */
+.fc.fc .fc-scrollgrid-section-sticky > * {
+  top: 3.5rem;
+  background: var(--color-surface);
+}
+
+@media (min-width: 64rem) {
+  .fc.fc .fc-scrollgrid-section-sticky > * {
+    top: 0;
+  }
+}
+
 .fc .fc-toolbar-title {
   font-size: 1rem;
   font-weight: 600;

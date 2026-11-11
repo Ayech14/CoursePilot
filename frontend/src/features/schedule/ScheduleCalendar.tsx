@@ -14,7 +14,7 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { Check, Flag, GraduationCap, Lock } from "lucide-react";
 import { DateTime } from "luxon";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ErrorAlert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
@@ -56,6 +56,42 @@ function statusClass(status: string): string {
   if (status === "missed") return "session-missed";
   if (status === "in_progress" || status === "paused") return "session-running";
   return "";
+}
+
+interface TimedItem {
+  start_at: string;
+  end_at: string;
+}
+
+const DEFAULT_HOURS = { first: 8 * 60, last: 22 * 60 };
+
+/**
+ * The hours of the day worth drawing: study hours, busy times and sessions on screen, an hour of
+ * margin either side, and never less than 8 AM to 10 PM. Drawing only these lets the calendar grow
+ * to its natural height, so the page is the only thing that scrolls.
+ */
+export function visibleHours(
+  windows: { start_minute: number; end_minute: number }[],
+  items: TimedItem[],
+  zone: string,
+): { slotMinTime: string; slotMaxTime: string } {
+  let first = DEFAULT_HOURS.first;
+  let last = DEFAULT_HOURS.last;
+  for (const window of windows) {
+    first = Math.min(first, window.start_minute);
+    last = Math.max(last, window.end_minute);
+  }
+  for (const item of items) {
+    const start = DateTime.fromISO(item.start_at, { zone });
+    const end = DateTime.fromISO(item.end_at, { zone });
+    const sameDay = start.hasSame(end, "day");
+    first = Math.min(first, sameDay ? start.hour * 60 + start.minute : 0);
+    last = Math.max(last, sameDay ? end.hour * 60 + end.minute : 1440);
+  }
+  const from = Math.max(Math.floor(first / 60) - 1, 0);
+  const to = Math.min(Math.ceil(last / 60) + 1, 24);
+  const clock = (hour: number) => `${String(hour).padStart(2, "0")}:00:00`;
+  return { slotMinTime: clock(from), slotMaxTime: clock(to) };
 }
 
 function canDrag(session: StudySession): boolean {
@@ -184,6 +220,8 @@ export function ScheduleCalendar({ zone, onOpen, onRefused, onOpenBusy, onSelect
   const courses = useCourses(true);
   const windows = useWindows();
   const move = useMoveSession();
+  const calendarRef = useRef<FullCalendar>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const [narrow] = useState(() => window.matchMedia?.(NARROW_SCREEN).matches ?? false);
 
   const events = useMemo(() => {
@@ -193,6 +231,10 @@ export function ScheduleCalendar({ zone, onOpen, onRefused, onOpenBusy, onSelect
     );
     return [...due, ...(busy.data ?? []).map(busyEvent), ...(sessions.data ?? []).map(toEvent)];
   }, [busy.data, sessions.data, deadlines.data, courses.data, zone]);
+  const hours = useMemo(
+    () => visibleHours(windows.data ?? [], [...(busy.data ?? []), ...(sessions.data ?? [])], zone),
+    [windows.data, busy.data, sessions.data, zone],
+  );
   const businessHours = useMemo<BusinessHoursInput>(
     () =>
       (windows.data ?? []).map((window) => ({
@@ -249,6 +291,16 @@ export function ScheduleCalendar({ zone, onOpen, onRefused, onOpenBusy, onSelect
     setRange({ start: info.start.toISOString(), end: info.end.toISOString() });
   }
 
+  // FullCalendar re-measures only when the window resizes. Folding the sidebar changes the
+  // calendar's width without that, so watch the calendar's own box instead.
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => calendarRef.current?.getApi().updateSize());
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
+
   const moveFailure = move.error && !isPlacementError(move.error) ? move.error : null;
 
   return (
@@ -272,10 +324,12 @@ export function ScheduleCalendar({ zone, onOpen, onRefused, onOpenBusy, onSelect
         </div>
       )}
       <div
+        ref={frameRef}
         aria-busy={sessions.isFetching}
         className={`card p-3 transition-opacity sm:p-4 ${sessions.isPlaceholderData ? "opacity-60" : ""}`}
       >
         <FullCalendar
+          ref={calendarRef}
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin, luxonPlugin]}
           timeZone={zone}
           initialView={narrow ? "timeGridDay" : "timeGridWeek"}
@@ -293,8 +347,10 @@ export function ScheduleCalendar({ zone, onOpen, onRefused, onOpenBusy, onSelect
           eventDurationEditable
           eventResizableFromStart={false}
           snapDuration="00:05:00"
-          scrollTime="08:00:00"
-          height={680}
+          slotMinTime={hours.slotMinTime}
+          slotMaxTime={hours.slotMaxTime}
+          height="auto"
+          stickyHeaderDates
           events={events}
           businessHours={businessHours}
           datesSet={handleDates}
