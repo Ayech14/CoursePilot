@@ -65,6 +65,8 @@ function toEvent(session: StudySession): EventInput {
     end: session.end_at,
     editable: canDrag(session),
     borderColor: session.course_color ?? NO_COURSE_COLOR,
+    // A soft wash of the course color. Text stays in the ink color, so any course color reads.
+    backgroundColor: `color-mix(in srgb, ${session.course_color ?? NO_COURSE_COLOR} 22%, var(--color-surface))`,
     classNames: ["session-event", statusClass(session.status)],
     extendedProps: { session },
   };

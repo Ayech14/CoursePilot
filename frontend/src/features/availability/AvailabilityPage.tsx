@@ -20,6 +20,7 @@ import {
 } from "./api";
 import { OneOffBlockDialog, RecurringBlockDialog } from "./BlockDialogs";
 import { PreferencesForm } from "./PreferencesForm";
+import { WeekGlance } from "./WeekGlance";
 import { WeeklyEditor } from "./WeeklyEditor";
 
 function Section({
@@ -34,7 +35,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="card p-5 sm:p-6">
+    <section aria-label={title} className="card p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">{title}</h2>
@@ -175,6 +176,7 @@ export function AvailabilityPage() {
   const zone = useAuth().user!.timezone;
   const windows = useWindows();
   const preferences = usePreferences();
+  const blocks = useRecurringBlocks();
 
   return (
     <>
@@ -183,6 +185,16 @@ export function AvailabilityPage() {
         subtitle={`When you can study and what you're busy with. Times are in ${zone}.`}
       />
       <div className="space-y-5">
+        <Section
+          title="Week at a glance"
+          description="Your study hours with weekly commitments taken out. One-time plans are on the schedule."
+        >
+          {windows.data && blocks.data ? (
+            <WeekGlance windows={windows.data} blocks={blocks.data} />
+          ) : (
+            <QueryState query={windows.isError ? windows : blocks}>{() => null}</QueryState>
+          )}
+        </Section>
         <Section title="Weekly study hours" description="The times you are generally free to study.">
           <QueryState query={windows}>{(data) => <WeeklyEditor initial={data} />}</QueryState>
         </Section>

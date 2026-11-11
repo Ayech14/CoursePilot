@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describeDue,
   formatClock,
   formatDuration,
   formatElapsed,
@@ -130,5 +131,36 @@ describe("formatElapsed", () => {
     [-5, "00:00"],
   ])("shows %s seconds as %s", (seconds, text) => {
     expect(formatElapsed(seconds)).toBe(text);
+  });
+});
+
+describe("describeDue", () => {
+  const zone = "America/Toronto";
+  // 8 PM on Tuesday, Nov 10 2026 in Toronto.
+  const now = new Date("2026-11-11T01:00:00Z");
+
+  it("counts calendar days in the profile's zone, not hours", () => {
+    expect(describeDue("2026-11-11T04:59:00Z", zone, now)).toEqual({ label: "Due today", tone: "danger" });
+    expect(describeDue("2026-11-11T05:30:00Z", zone, now)).toEqual({ label: "Due tomorrow", tone: "accent" });
+    expect(describeDue("2026-11-13T17:00:00Z", zone, now)).toEqual({ label: "In 3 days", tone: "accent" });
+    expect(describeDue("2026-11-15T17:00:00Z", zone, now)).toEqual({ label: "In 5 days", tone: "neutral" });
+    expect(describeDue("2026-11-30T17:00:00Z", zone, now)).toEqual({ label: "Nov 30", tone: "neutral" });
+  });
+
+  it("flags deadlines that have passed", () => {
+    expect(describeDue("2026-11-10T12:00:00Z", zone, now)).toEqual({ label: "Overdue", tone: "danger" });
+  });
+
+  it("uses the same instant differently for someone in another zone", () => {
+    // 11:30 PM Toronto is already the next day in Tokyo.
+    expect(describeDue("2026-11-11T04:30:00Z", "Asia/Tokyo", now).label).toBe("Due today");
+    expect(describeDue("2026-11-11T04:30:00Z", zone, now).label).toBe("Due today");
+    expect(describeDue("2026-11-11T16:00:00Z", "Asia/Tokyo", now).label).toBe("Due tomorrow");
+  });
+
+  it("stays right across a 25-hour day when clocks go back", () => {
+    // Clocks went back on Nov 1 2026. Saturday 8 PM to Monday 9 AM is two calendar days.
+    const saturday = new Date("2026-11-01T00:00:00Z");
+    expect(describeDue("2026-11-02T14:00:00Z", zone, saturday).label).toBe("In 2 days");
   });
 });

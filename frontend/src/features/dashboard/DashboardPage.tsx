@@ -1,7 +1,7 @@
 import { CalendarClock, ListChecks, Sparkles, Timer, TriangleAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { Card, CourseDot, QuietNote, RankedBars, StatTile } from "../../components/ui/Figures";
+import { Card, CourseDot, DueBadge, ProgressRing, QuietNote, RankedBars, StatTile } from "../../components/ui/Figures";
 import { EmptyState, QueryState } from "../../components/ui/States";
 import { formatDateTime, formatDuration, formatTime, minutesBetween } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
@@ -31,15 +31,21 @@ function TodayRow({ session, zone }: { session: StudySession; zone: string }) {
     in_progress: "Running now",
     paused: "Paused",
   };
+  const faded = session.status === "completed" || session.status === "missed";
   return (
-    <li className="flex items-center gap-3 py-2.5 text-sm">
-      <span className="mt-0.5 self-start pt-1">
-        <CourseDot color={session.course_color} />
+    <li className={`flex items-center gap-3 py-2.5 text-sm ${faded ? "text-ink-muted" : ""}`}>
+      <span className="w-16 shrink-0 text-xs font-medium text-ink-muted tabular-nums">
+        {formatTime(session.start_at, zone)}
       </span>
+      <span
+        aria-hidden="true"
+        className="w-1 self-stretch rounded-full"
+        style={{ backgroundColor: session.course_color ?? "var(--color-ink-subtle)" }}
+      />
       <span className="min-w-0 flex-1">
-        <span className="block font-medium">{session.task_title}</span>
+        <span className="block truncate font-medium">{session.task_title}</span>
         <span className="block text-xs text-ink-muted tabular-nums">
-          {formatTime(session.start_at, zone)} to {formatTime(session.end_at, zone)}
+          Until {formatTime(session.end_at, zone)}
           {note[session.status] ? `, ${note[session.status]!.toLowerCase()}` : ""}
         </span>
       </span>
@@ -100,18 +106,66 @@ function Deadlines({ items, zone, empty }: { items: DeadlineItem[]; zone: string
             <CourseDot color={item.course_color} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block font-medium">{item.title}</span>
+            <span className="block truncate font-medium">{item.title}</span>
             <span className="block text-xs text-ink-muted">
-              {item.course_name ? `${item.course_name}, ` : ""}
-              {formatDateTime(item.deadline_at, zone)}
+              {item.course_name ? `${item.course_name} · ` : ""}
+              {formatDuration(item.remaining_minutes)} left
             </span>
           </span>
-          <span className="shrink-0 text-xs text-ink-subtle">
-            {formatDuration(item.remaining_minutes)} left
-          </span>
+          <DueBadge iso={item.deadline_at} zone={zone} />
         </li>
       ))}
     </ul>
+  );
+}
+
+function nextDeadline(data: Dashboard): DeadlineItem | null {
+  const all = [...data.upcoming_assignments, ...data.upcoming_exams];
+  all.sort((a, b) => a.deadline_at.localeCompare(b.deadline_at));
+  return all[0] ?? null;
+}
+
+/** How much of this week's study is behind the student: timed so far against timed plus still planned. */
+function WeekRing({ data }: { data: Dashboard }) {
+  const { studied_minutes: studied, planned_minutes: planned } = data.week;
+  const total = studied + planned;
+  const percent = total === 0 ? 0 : Math.round((studied / total) * 100);
+  return (
+    <div className="flex items-center gap-4">
+      <ProgressRing
+        value={studied}
+        total={total}
+        label={total === 0 ? "No study planned or timed this week" : `${percent}% of this week's study done`}
+      >
+        <span>
+          <span className="block text-lg font-semibold tabular-nums">{total === 0 ? "–" : `${percent}%`}</span>
+        </span>
+      </ProgressRing>
+      <div className="text-sm">
+        <p className="font-medium">This week</p>
+        <p className="mt-0.5 max-w-40 text-xs text-ink-muted">
+          {total === 0
+            ? "Nothing planned yet."
+            : `${formatDuration(studied)} studied, ${formatDuration(planned)} still planned`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function NextDeadline({ item, zone }: { item: DeadlineItem; zone: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-line bg-surface/70 p-4 backdrop-blur-sm sm:w-64">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-ink-subtle">Next deadline</p>
+        <DueBadge iso={item.deadline_at} zone={zone} />
+      </div>
+      <p className="mt-2 truncate font-semibold">{item.title}</p>
+      <p className="mt-0.5 truncate text-xs text-ink-muted">
+        {item.course_name ? `${item.course_name} · ` : ""}
+        {formatDateTime(item.deadline_at, zone)}
+      </p>
+    </div>
   );
 }
 
@@ -262,6 +316,7 @@ export function DashboardPage() {
   }).format(now);
 
   const line = dashboard.data ? todayLine(dashboard.data, user.timezone) : null;
+  const next = dashboard.data ? nextDeadline(dashboard.data) : null;
 
   return (
     <>
@@ -270,14 +325,22 @@ export function DashboardPage() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-brand-soft),transparent_60%),radial-gradient(ellipse_at_bottom_left,var(--color-accent-soft),transparent_55%)] opacity-80"
         />
-        <div className="relative">
-          <p className="text-sm font-medium text-brand">
-            {today} · {user.timezone}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-            {greetingFor(user.timezone, now)}, {user.display_name}
-          </h1>
-          {line && <p className="mt-2 max-w-xl text-sm text-ink-muted">{line}</p>}
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-brand">
+              {today} · {user.timezone}
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+              {greetingFor(user.timezone, now)}, {user.display_name}
+            </h1>
+            {line && <p className="mt-2 max-w-xl text-sm text-ink-muted">{line}</p>}
+          </div>
+          {dashboard.data && hasAnything(dashboard.data) && (
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <WeekRing data={dashboard.data} />
+              {next && <NextDeadline item={next} zone={user.timezone} />}
+            </div>
+          )}
         </div>
       </section>
       <QueryState query={dashboard}>

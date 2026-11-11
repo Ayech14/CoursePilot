@@ -142,6 +142,17 @@ describe("dashboard", () => {
     expect(load.getAllByRole("listitem").map((row) => row.textContent)).toEqual(["Algorithms2h 30m", "No course40m"]);
   });
 
+  it("sums up the week and the next deadline in the header from real figures", async () => {
+    stubApi({ "GET /dashboard": () => jsonResponse(200, DASHBOARD) });
+    renderApp("/dashboard");
+
+    // 197 minutes timed of 197 + 130: 60%.
+    expect(await screen.findByRole("img", { name: "60% of this week's study done" })).toBeInTheDocument();
+    expect(screen.getByText("3h 17m studied, 2h 10m still planned")).toBeInTheDocument();
+    const next = screen.getByText("Next deadline").closest("div")!.parentElement!;
+    expect(within(next).getByText("Problem set 4")).toBeInTheDocument();
+  });
+
   it("guides a new student instead of showing zeros", async () => {
     stubApi({ "GET /dashboard": () => jsonResponse(200, EMPTY_DASHBOARD) });
     renderApp("/dashboard");

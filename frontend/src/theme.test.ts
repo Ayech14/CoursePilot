@@ -68,6 +68,32 @@ describe.each([
   });
 });
 
+function mix(color: string, base: string, share: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(i, i + 2), 16);
+  return (
+    "#" +
+    [1, 3, 5]
+      .map((i) => Math.round(channel(color, i) * share + channel(base, i) * (1 - share)))
+      .map((v) => v.toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+// Students pick any course color. Badges, calendar sessions and course marks put ink text on a wash
+// of that color, at most 24% strong, so check the most extreme colors on every surface.
+describe.each([
+  ["dark", dark],
+  ["light", light],
+])("course color washes in the %s theme", (_name, palette) => {
+  const extremes = ["#000000", "#ffffff", "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"];
+  it.each(extremes)("ink stays readable on a wash of %s", (color) => {
+    for (const base of ["canvas", "surface", "raised"]) {
+      const wash = mix(color, palette[base]!, 0.24);
+      expect(contrast(palette.ink!, wash), `${color} over ${base}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 describe("theme choice", () => {
   afterEach(() => {
     delete document.documentElement.dataset.theme;

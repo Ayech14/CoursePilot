@@ -132,3 +132,20 @@ export function hoursToMinutes(value: string): number | null {
 export function minutesToHours(minutes: number): string {
   return String(Math.round((minutes / 60) * 100) / 100);
 }
+
+export type DueTone = "danger" | "accent" | "neutral";
+
+/**
+ * How soon a deadline is, counted in calendar days on the student's own calendar, so that
+ * 23:59 tonight is "today" and 00:30 tomorrow is "tomorrow" even if they are an hour apart.
+ */
+export function describeDue(iso: string, zone: string, now: Date = new Date()): { label: string; tone: DueTone } {
+  const due = DateTime.fromISO(iso, { zone });
+  const current = DateTime.fromJSDate(now, { zone });
+  if (due < current) return { label: "Overdue", tone: "danger" };
+  const days = Math.round(due.startOf("day").diff(current.startOf("day"), "days").days);
+  if (days === 0) return { label: "Due today", tone: "danger" };
+  if (days === 1) return { label: "Due tomorrow", tone: "accent" };
+  if (days <= 6) return { label: `In ${days} days`, tone: days <= 3 ? "accent" : "neutral" };
+  return { label: due.toFormat("LLL d"), tone: "neutral" };
+}

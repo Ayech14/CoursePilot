@@ -28,6 +28,11 @@ function ThemeToggle() {
   );
 }
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => [...part][0]!.toUpperCase()).join("") || "?";
+}
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth();
   return (
@@ -55,7 +60,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
       <div className="flex items-center gap-2 border-t border-line p-3">
-        <div className="min-w-0 flex-1 px-2">
+        <span
+          aria-hidden="true"
+          className="ml-1 flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-soft to-accent-soft text-sm font-semibold text-ink ring-1 ring-line"
+        >
+          {initials(user?.display_name ?? "")}
+        </span>
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{user?.display_name}</p>
           <p className="truncate text-xs text-ink-subtle">{user?.email}</p>
         </div>

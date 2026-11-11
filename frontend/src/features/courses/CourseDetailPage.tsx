@@ -4,14 +4,15 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ErrorAlert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
+import { DueBadge } from "../../components/ui/Figures";
 import { ConfirmDialog } from "../../components/ui/Modal";
 import { PageHeader, QueryState } from "../../components/ui/States";
-import { formatDateTime, formatDuration, isPast } from "../../lib/datetime";
+import { formatDateTime, formatDuration } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
 import { TaskFormDialog } from "../tasks/TaskFormDialog";
 import { useCourse, useDeleteCourse, useSetArchived, type CourseDetail } from "./api";
 import { CourseFormDialog } from "./CourseFormDialog";
-import { ProgressBar } from "./CoursesPage";
+import { CourseMark, ProgressBar } from "./CoursesPage";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -34,6 +35,7 @@ function CourseView({ course, zone }: { course: CourseDetail; zone: string }) {
     <>
       <PageHeader
         title={course.name}
+        leading={<CourseMark name={course.name} color={course.color} size="lg" />}
         subtitle={[course.code, course.archived_at && "Archived"].filter(Boolean).join(" · ")}
         action={
           <div className="flex flex-wrap gap-2">
@@ -78,20 +80,18 @@ function CourseView({ course, zone }: { course: CourseDetail; zone: string }) {
           </Link>
         </div>
         {course.upcoming_tasks.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
+          <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
             No open tasks with a deadline.
           </p>
         ) : (
           <ul className="divide-y divide-line card">
             {course.upcoming_tasks.map((task) => (
-              <li key={task.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-                <span className="min-w-0 truncate font-medium">{task.title}</span>
-                <span
-                  className={`shrink-0 text-xs ${isPast(task.deadline_at!) ? "text-danger" : "text-ink-muted"}`}
-                >
-                  {isPast(task.deadline_at!) && "Overdue · "}
+              <li key={task.id} className="flex items-center gap-4 px-4 py-3 text-sm sm:px-5">
+                <span className="min-w-0 flex-1 truncate font-medium">{task.title}</span>
+                <span className="hidden shrink-0 text-xs text-ink-muted tabular-nums sm:inline">
                   {formatDateTime(task.deadline_at!, zone)}
                 </span>
+                <DueBadge iso={task.deadline_at!} zone={zone} />
               </li>
             ))}
           </ul>

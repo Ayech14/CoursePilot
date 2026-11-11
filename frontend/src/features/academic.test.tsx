@@ -172,7 +172,8 @@ describe("tasks", () => {
       "GET /tasks": tasks({ ...TASK, deadline_at: "2020-03-02T15:00:00Z" }),
     });
     renderApp("/tasks");
-    expect(await screen.findByText(/Overdue · Tue, Mar 3 2020, 12:00 AM/)).toBeInTheDocument();
+    expect(await screen.findByText("Tue, Mar 3 2020, 12:00 AM")).toBeInTheDocument();
+    expect(screen.getByText("Overdue")).toHaveAttribute("title", "Tue, Mar 3 2020, 12:00 AM");
     expect(within(screen.getByRole("list")).getByText("Algorithms")).toBeInTheDocument();
   });
 
@@ -242,7 +243,7 @@ describe("tasks", () => {
     renderApp("/tasks");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(await screen.findByRole("button", { name: /^Edit / }));
     await user.clear(dialog().getByLabelText("Title"));
     await user.type(dialog().getByLabelText("Title"), "Renamed");
     await user.click(dialog().getByRole("button", { name: "Save changes" }));
@@ -262,7 +263,7 @@ describe("tasks", () => {
     renderApp("/tasks");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(await screen.findByRole("button", { name: /^Edit / }));
     await user.clear(dialog().getByLabelText("Remaining effort (hours)"));
     await user.type(dialog().getByLabelText("Remaining effort (hours)"), "5");
     await user.click(dialog().getByRole("button", { name: "Save changes" }));
@@ -279,7 +280,7 @@ describe("tasks", () => {
     renderApp("/tasks");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(await screen.findByRole("button", { name: /^Edit / }));
 
     await waitFor(() => expect(dialog().getByLabelText("Course")).toHaveValue("c1"));
   });
@@ -322,7 +323,7 @@ describe("tasks", () => {
     renderApp("/tasks");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Log" }));
+    await user.click(await screen.findByRole("button", { name: /^Log time on / }));
     await user.type(dialog().getByLabelText("Time spent (minutes)"), "25");
     await user.click(dialog().getByRole("button", { name: "Save progress" }));
 
@@ -340,7 +341,7 @@ describe("tasks", () => {
     renderApp("/tasks");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Log" }));
+    await user.click(await screen.findByRole("button", { name: /^Log time on / }));
     await user.click(dialog().getByLabelText("This task is finished"));
     await user.click(dialog().getByRole("button", { name: "Save progress" }));
 

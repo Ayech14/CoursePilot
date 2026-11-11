@@ -52,6 +52,13 @@ A warmer dark theme and a light theme, switchable from the sidebar and in Settin
 light, dark). Every screen checked in both.
 **Done when:** both themes pass WCAG AA contrast for every text pairing, enforced by a test.
 
+**Second pass, from the owner's feedback that the look could still improve:** each course's colour
+now carries through the app (calendar sessions, task badges, course cards with a colour band and
+initials). Deadlines show how soon they are ("Due tomorrow", "In 3 days", "Overdue"), counted in
+calendar days in the profile's zone. The dashboard header shows a ring for how much of this
+week's study is done and the next deadline. Task rows show progress against the estimate, with icon
+actions. "Your week" opens with a week-at-a-glance picture and the free study hours per day.
+
 ### M8: Production Readiness — Not started
 Notifications, rate limiting, security review, Playwright journeys, performance pass, production
 images, deployment, documentation. A6, I1–I3, K7.
@@ -174,6 +181,13 @@ the whole app went blank. Both are fixed and tested, and a page crash now leaves
 The check found a bug older than this milestone: course colour dots inside text rows had no size
 and were invisible. Fixed. Fade-ins appear paused in a hidden browser pane, which is the browser
 saving work, not a fault; they run normally on screen and not at all with reduced motion.
+
+**Second pass check (2026-11-10):** 235 frontend tests passed; lint, types and build clean. New
+tests cover the due labels (another zone and the day clocks went back), free hours per day, the
+dashboard header figures, and that ink text stays at 4.5:1 on a wash of any course colour, from
+black to white, in both themes. Dashboard, tasks, courses, a course page, the calendar and Your week
+were checked in the browser in both themes, and tasks at phone width; that caught a misplaced
+time-axis label and a progress bar squeezed to nothing on phones, both fixed.
 
 **Known gaps carried forward:**
 - The theme is saved per device, not per account. A preference column can be added if wanted.
