@@ -173,12 +173,6 @@ about ten minutes: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 | [Roadmap](docs/DEVELOPMENT_ROADMAP.md) | Milestones, status, and a record of how each was verified |
 | [Deployment](docs/DEPLOYMENT.md) | Hosting choice, one-time setup, everyday use |
 
-## Status
-
-Milestones 1 to 8 are done and deployed. Milestone 9, optional extensions such as comparing the
-scheduler with a constraint solver, has not started. The [roadmap](docs/DEVELOPMENT_ROADMAP.md)
-records what was built and how each milestone was checked.
-
 ## License
 
 [MIT](LICENSE)
