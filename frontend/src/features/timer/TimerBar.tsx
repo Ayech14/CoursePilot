@@ -83,7 +83,11 @@ function OpenTimer({ timer, fetchedAt }: { timer: ActiveTimer; fetchedAt: number
       {discarding && (
         <ConfirmDialog
           title="Discard this timer?"
-          message="The time won't be recorded, and the session goes back to planned."
+          message={
+            session.unplanned
+              ? "The time won't be recorded, and this session is removed from your schedule."
+              : "The time won't be recorded, and the session goes back to planned."
+          }
           confirmLabel="Discard timer"
           loading={discard.isPending}
           onClose={() => setDiscarding(false)}

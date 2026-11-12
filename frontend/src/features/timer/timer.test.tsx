@@ -200,6 +200,15 @@ describe("study timer", () => {
     );
   });
 
+  it("warns that discarding an on-the-spot session removes it", async () => {
+    await openList({
+      "GET /sessions/active": () =>
+        jsonResponse(200, timer({ session: makeSession({ status: "in_progress", unplanned: true }) })),
+    });
+    await userEvent.setup().click(await bar().findByRole("button", { name: "Discard" }));
+    expect(screen.getByText("The time won't be recorded, and this session is removed from your schedule.")).toBeInTheDocument();
+  });
+
   describe("counting", () => {
     beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
     afterEach(() => vi.useRealTimers());

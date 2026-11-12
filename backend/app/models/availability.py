@@ -26,6 +26,9 @@ class StudyPreferences(Timestamps, Base):
         CheckConstraint("max_daily_minutes BETWEEN 30 AND 1440", name="daily_range"),
         CheckConstraint("deadline_buffer_hours BETWEEN 0 AND 168", name="buffer_range"),
         CheckConstraint("planning_horizon_days BETWEEN 1 AND 180", name="horizon_range"),
+        CheckConstraint(
+            "daily_goal_minutes IS NULL OR daily_goal_minutes BETWEEN 15 AND 720", name="goal_range"
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -37,6 +40,8 @@ class StudyPreferences(Timestamps, Base):
     max_daily_minutes: Mapped[int] = mapped_column(default=360, server_default=text("360"))
     deadline_buffer_hours: Mapped[int] = mapped_column(default=12, server_default=text("12"))
     planning_horizon_days: Mapped[int] = mapped_column(default=28, server_default=text("28"))
+    # The student's own target for the dashboard. It never changes what the scheduler plans.
+    daily_goal_minutes: Mapped[int | None]
 
 
 def _weekly_shape_checks() -> tuple[CheckConstraint, CheckConstraint]:

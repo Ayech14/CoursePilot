@@ -51,6 +51,24 @@ class CourseWorkload(BaseModel):
     remaining_minutes: int
 
 
+class TodayProgress(BaseModel):
+    studied_minutes: int
+    goal_minutes: int | None
+    streak_days: int
+    """Consecutive days with timed study, ending today or, if nothing is timed yet, yesterday."""
+    studied_today: bool
+
+
+class RecentSession(BaseModel):
+    session_id: uuid.UUID
+    task_id: uuid.UUID
+    task_title: str
+    course_name: str | None
+    course_color: str | None
+    ended_at: datetime
+    minutes: int
+
+
 class DashboardRead(BaseModel):
     today: list[SessionRead]
     upcoming_assignments: list[DeadlineItem]
@@ -60,6 +78,8 @@ class DashboardRead(BaseModel):
     week: WeekSummary
     tasks: TaskCounts
     workload: list[CourseWorkload]
+    progress: TodayProgress
+    recent: list[RecentSession]
 
 
 class WeekMinutes(BaseModel):
@@ -120,3 +140,39 @@ class AnalyticsRead(BaseModel):
     estimates: EstimateSummary
     upcoming: list[UpcomingDay]
     consistency: Consistency
+
+
+class DayTask(BaseModel):
+    task_id: uuid.UUID
+    title: str
+    course_color: str | None
+    minutes: int
+
+
+class DayItem(BaseModel):
+    task_id: uuid.UUID
+    title: str
+    course_color: str | None
+
+
+class DayDeadline(BaseModel):
+    task_id: uuid.UUID
+    title: str
+    task_type: TaskType
+    deadline_at: datetime
+    course_color: str | None
+    completed: bool
+
+
+class MonthDay(BaseModel):
+    date: date
+    studied_minutes: int
+    studied: list[DayTask]
+    completed: list[DayItem]
+    deadlines: list[DayDeadline]
+
+
+class MonthRead(BaseModel):
+    month: date
+    goal_minutes: int | None
+    days: list[MonthDay]

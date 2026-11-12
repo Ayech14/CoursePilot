@@ -79,12 +79,14 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 | G1 | Start, pause, resume, finish a session, with a timer | M5 |
 | G2 | Record actual time; link sessions to tasks | M5 |
 | G3 | Mark tasks complete; compare estimated vs actual | M5 |
+| G4 | Start a timer on any open task without planning a session first | M8 |
 
 ### H. Analytics
 | ID | Requirement | Milestone |
 |----|-------------|-----------|
 | H1 | Weekly hours, hours per course, completions over time | M5 |
 | H2 | Workload distribution, estimated vs actual, upcoming workload, consistency | M5 |
+| H3 | Today's study against an optional daily goal, the run of study days, recent sessions, and a month overview of time studied, tasks finished and deadlines | M8 |
 
 ### I. Notifications
 | ID | Requirement | Milestone |
@@ -92,6 +94,11 @@ Requirement IDs are referenced by the roadmap so nothing can be silently dropped
 | I1 | Approaching deadlines, overdue and unfinished tasks | M8 |
 | I2 | Schedule adjustments and workload conflicts | M8 |
 | I3 | No repeated identical notifications | M8 |
+
+### N. Getting around
+| ID | Requirement | Milestone |
+|----|-------------|-----------|
+| N1 | Search pages, tasks and courses from the keyboard (Ctrl or ⌘ + K), without sending the query to the server | M8 |
 
 ### J. Manual schedule control
 | ID | Requirement | Milestone |

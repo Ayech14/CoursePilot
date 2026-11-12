@@ -29,12 +29,12 @@ function useTimerMutation<TInput, TResult>(mutationFn: (input: TInput) => Promis
   const client = useQueryClient();
   return useMutation<TResult, ApiError, TInput>({
     mutationFn,
-    onSettled: () =>
-      Promise.all(
-        [TIMER_KEY, ["schedule"], ["insights"], ["tasks"], ["courses"]].map((queryKey) =>
-          client.invalidateQueries({ queryKey }),
-        ),
-      ),
+    // Refresh in the background. Waiting for every page to reload kept dialogs open for seconds.
+    onSettled: () => {
+      for (const queryKey of [TIMER_KEY, ["schedule"], ["insights"], ["tasks"], ["courses"]]) {
+        void client.invalidateQueries({ queryKey });
+      }
+    },
   });
 }
 
@@ -52,4 +52,9 @@ export function useFinishTimer() {
 
 export function useDiscardTimer() {
   return useTimerMutation((id: string) => api<void>(`/sessions/${id}/discard`, "POST"));
+}
+
+/** Time a task right now, without a planned session. */
+export function useQuickStart() {
+  return useTimerMutation((taskId: string) => api<ActiveTimer>("/sessions/quick-start", "POST", { task_id: taskId }));
 }

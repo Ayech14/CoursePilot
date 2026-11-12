@@ -51,6 +51,8 @@ export interface StudySession {
   is_user_modified: boolean;
   explanation: string | null;
   actual_minutes: number;
+  /** Started on the spot with "Start timer"; discarding removes it. */
+  unplanned?: boolean;
 }
 
 export interface ScheduleStatus {

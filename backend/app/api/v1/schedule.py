@@ -16,6 +16,7 @@ from app.schemas.schedule import (
     PlacementRead,
     PreviewRequest,
     ProposalRead,
+    QuickStart,
     ScheduleStatus,
     SessionCreate,
     SessionRead,
@@ -119,6 +120,13 @@ def unlock_session(
 @sessions_router.get("/active")
 def active_timer(user: CurrentUser, db: DbSession, now: Now) -> ActiveTimerRead | None:
     return timer_service.get_active(db, user, now)
+
+
+@sessions_router.post("/quick-start")
+def quick_start_timer(
+    data: QuickStart, user: CurrentUser, db: DbSession, now: Now
+) -> ActiveTimerRead:
+    return timer_service.quick_start(db, user, data.task_id, now)
 
 
 @sessions_router.post("/{session_id}/start")

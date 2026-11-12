@@ -112,3 +112,11 @@ class PreferencesWrite(BaseModel):
 
 class PreferencesRead(PreferencesWrite):
     model_config = ConfigDict(from_attributes=True)
+
+    daily_goal_minutes: int | None = None
+
+
+class DailyGoalWrite(BaseModel):
+    """The student's own daily target. Null turns the goal off."""
+
+    minutes: Annotated[int, Field(ge=15, le=720)] | None

@@ -20,6 +20,7 @@ import { useSyncStaleFeeds, type BusyTime } from "../calendars/api";
 import type { Task } from "../tasks/api";
 import { TaskFormDialog } from "../tasks/TaskFormDialog";
 import { StartSessionButton } from "../timer/StartSessionButton";
+import { StartTimerButton } from "../timer/StartTimerButton";
 import {
   useApplyProposal,
   useCurrentProposal,
@@ -187,6 +188,7 @@ export function SchedulePage() {
         subtitle={`Your study plan, in ${zone}.`}
         action={
           <div className="flex flex-wrap gap-2">
+            <StartTimerButton />
             {hasSessions && (
               <Button
                 variant="secondary"

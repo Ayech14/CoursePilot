@@ -1,4 +1,4 @@
-import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, X } from "lucide-react";
+import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, Sun, X } from "lucide-react";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -9,6 +9,7 @@ import { resolveTheme } from "../../lib/theme";
 import { useTheme } from "../../lib/useTheme";
 import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { Logo } from "../ui/Logo";
+import { CommandPalette } from "./CommandPalette";
 import { NAV_ITEMS } from "./navigation";
 
 function ThemeToggle() {
@@ -34,6 +35,8 @@ function initials(name: string): string {
   return parts.slice(0, 2).map((part) => [...part][0]!.toUpperCase()).join("") || "?";
 }
 
+const SHORTCUT = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl K";
+
 const ICON_BUTTON =
   "flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-raised hover:text-ink";
 
@@ -41,10 +44,12 @@ function SidebarContent({
   onNavigate,
   collapsed = false,
   onToggle,
+  onSearch,
 }: {
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggle?: () => void;
+  onSearch: () => void;
 }) {
   const { user, logout } = useAuth();
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
@@ -70,6 +75,31 @@ function SidebarContent({
           </button>
           </div>
         )}
+      </div>
+      <div className={collapsed ? "flex justify-center px-2.5 pb-1" : "px-3 pb-1"}>
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            onSearch();
+          }}
+          aria-label="Search"
+          aria-keyshortcuts="Control+K Meta+K"
+          title={collapsed ? "Search (Ctrl or ⌘ + K)" : undefined}
+          className={
+            collapsed
+              ? ICON_BUTTON
+              : "flex h-9 w-full items-center gap-2.5 rounded-lg border border-line bg-raised/60 px-3 text-sm text-ink-subtle transition-colors hover:border-brand/50 hover:text-ink"
+          }
+        >
+          <Search aria-hidden="true" className="size-4 shrink-0" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left">Search</span>
+              <kbd className="rounded border border-line px-1.5 text-[0.6875rem]">{SHORTCUT}</kbd>
+            </>
+          )}
+        </button>
       </div>
       <nav aria-label="Main" className={`flex-1 space-y-1 py-2 ${collapsed ? "px-2.5" : "px-3"}`}>
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
@@ -122,6 +152,22 @@ function SidebarContent({
   );
 }
 
+/** Ctrl or ⌘ + K opens search from anywhere in the app. */
+function useSearchShortcut(): [boolean, (open: boolean) => void] {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setOpen((current) => !current);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  return [open, setOpen];
+}
+
 const SIDEBAR_STORAGE_KEY = "coursepilot.sidebar";
 
 /** Whether the desktop sidebar is folded down to icons. Remembered on this device. */
@@ -153,6 +199,8 @@ function useCollapsedSidebar(): [boolean, () => void] {
 export function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, toggleCollapsed] = useCollapsedSidebar();
+  const [searchOpen, setSearchOpen] = useSearchShortcut();
+  const openSearch = useCallback(() => setSearchOpen(true), [setSearchOpen]);
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -176,7 +224,7 @@ export function AppShell() {
           collapsed ? "w-16" : "w-64"
         }`}
       >
-        <SidebarContent collapsed={collapsed} onToggle={toggleCollapsed} />
+        <SidebarContent collapsed={collapsed} onToggle={toggleCollapsed} onSearch={openSearch} />
       </aside>
 
       {drawerOpen && (
@@ -195,7 +243,7 @@ export function AppShell() {
             >
               <X aria-hidden="true" className="size-5" />
             </button>
-            <SidebarContent onNavigate={() => setDrawerOpen(false)} />
+            <SidebarContent onNavigate={() => setDrawerOpen(false)} onSearch={openSearch} />
           </aside>
         </div>
       )}
@@ -210,7 +258,10 @@ export function AppShell() {
           <Menu aria-hidden="true" className="size-5" />
         </button>
         <span className="text-sm font-semibold">{currentLabel ?? "CoursePilot"}</span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-0.5">
+          <button type="button" onClick={openSearch} aria-label="Search" className={ICON_BUTTON}>
+            <Search aria-hidden="true" className="size-4.5" />
+          </button>
           <NotificationBell placement="header" />
         </div>
       </header>
@@ -223,6 +274,7 @@ export function AppShell() {
           </div>
         </ErrorBoundary>
       </main>
+      <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

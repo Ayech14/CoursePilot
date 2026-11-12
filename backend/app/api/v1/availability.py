@@ -7,6 +7,7 @@ from pydantic import AwareDatetime
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.availability import (
+    DailyGoalWrite,
     OneOffBlockRead,
     OneOffBlockWrite,
     PreferencesRead,
@@ -97,3 +98,8 @@ def get_preferences(user: CurrentUser, db: DbSession) -> PreferencesRead:
 @preferences_router.put("")
 def update_preferences(data: PreferencesWrite, user: CurrentUser, db: DbSession) -> PreferencesRead:
     return PreferencesRead.model_validate(service.update_preferences(db, user, data))
+
+
+@preferences_router.put("/daily-goal")
+def set_daily_goal(data: DailyGoalWrite, user: CurrentUser, db: DbSession) -> PreferencesRead:
+    return PreferencesRead.model_validate(service.set_daily_goal(db, user, data.minutes))

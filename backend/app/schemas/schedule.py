@@ -99,6 +99,8 @@ class SessionRead(BaseModel):
     is_user_modified: bool
     explanation: str | None
     actual_minutes: int
+    unplanned: bool = False
+    """Started on the spot with "Start timer". Discarding it removes it."""
 
 
 _MIN_SESSION_MINUTES = 5
@@ -126,6 +128,12 @@ class _SessionTimes(BaseModel):
 class SessionCreate(_SessionTimes):
     task_id: uuid.UUID
     acknowledge_warnings: bool = False
+
+
+class QuickStart(BaseModel):
+    """Start timing a task right now, without a planned session."""
+
+    task_id: uuid.UUID
 
 
 class SessionUpdate(_SessionTimes):

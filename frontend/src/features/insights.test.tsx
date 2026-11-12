@@ -67,6 +67,8 @@ const DASHBOARD = {
   week: { week_start: "2026-11-16", studied_minutes: 197, planned_minutes: 130 },
   tasks: { completed: 3, remaining: 9, overdue: 1 },
   workload: [COURSE, { ...COURSE, course_id: null, name: "No course", color: null, remaining_minutes: 40, open_tasks: 1 }],
+  progress: { studied_minutes: 0, goal_minutes: null, streak_days: 0, studied_today: false },
+  recent: [],
 };
 
 const EMPTY_DASHBOARD = {

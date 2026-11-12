@@ -65,7 +65,9 @@ so separate tables would duplicate them. For an exam, `deadline_at` is the exam'
 ### Availability
 
 **`study_preferences`** (one row per user): `preferred_session_minutes`, `min_session_minutes`,
-`break_minutes`, `max_daily_minutes`, `deadline_buffer_hours`, `planning_horizon_days`.
+`break_minutes`, `max_daily_minutes`, `deadline_buffer_hours`, `planning_horizon_days`, and
+`daily_goal_minutes` (nullable, 15 to 720). The goal is the student's own target for the dashboard;
+the scheduler never reads it, and changing it does not mark the schedule as needing an update.
 
 **`availability_windows`**: `user_id`, `day_of_week` (0 = Monday), `start_minute`, `end_minute`.
 
@@ -91,7 +93,12 @@ An overnight window is entered as two windows, one on each day.
 ### Schedule
 
 **`study_sessions`**: `id`, `user_id`, `task_id`, `start_at`, `end_at`, `status`, `origin`,
-`is_locked`, `user_modified_at`, `explanation` (JSONB), timestamps.
+`is_locked`, `user_modified_at`, `explanation` (JSONB), `unplanned`, timestamps.
+
+`unplanned` marks a session created by "Start timer" rather than by planning. It holds the
+calendar from the moment it starts until the next planned session, at most one preferred session
+long. Finishing it shrinks it to the time worked; discarding it deletes it, where a planned
+session would go back to planned.
 
 | Status | Meaning | Holds its time slot? |
 |--------|---------|----------------------|

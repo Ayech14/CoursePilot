@@ -16,13 +16,14 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import (
     InvalidFieldsError,
+    SessionConflictError,
     SessionNotStartableError,
     TaskCompletedError,
     TimerActiveError,
     TimerStateError,
 )
-from app.models import StudySession, Task, User, WorkInterval
-from app.models.enums import SessionStatus, TaskStatus
+from app.models import StudyPreferences, StudySession, Task, User, WorkInterval
+from app.models.enums import SessionOrigin, SessionStatus, TaskStatus
 from app.schemas.schedule import ActiveTimerRead, SessionRead, TimerFinish
 from app.services.common import get_owned, mark_schedule_inputs_changed
 from app.services.scheduling import lock_user, reconcile_missed_sessions, rounded_minutes
@@ -32,6 +33,7 @@ from app.services.tasks import apply_work
 logger = logging.getLogger(__name__)
 
 _OPEN = (SessionStatus.IN_PROGRESS, SessionStatus.PAUSED)
+_SHORTEST_SLOT = timedelta(minutes=1)
 
 
 def _intervals(db: Session, session: StudySession) -> list[WorkInterval]:
@@ -86,6 +88,21 @@ def get_active(db: Session, user: User, now: datetime) -> ActiveTimerRead | None
     return None if session is None else _timer_read(db, session, now)
 
 
+def _begin(db: Session, user: User, session: StudySession, now: datetime) -> ActiveTimerRead:
+    task = db.get_one(Task, session.task_id)
+    if task.status == TaskStatus.COMPLETED:
+        raise TaskCompletedError
+    if task.status == TaskStatus.TODO:
+        task.status = TaskStatus.IN_PROGRESS
+
+    session.status = SessionStatus.IN_PROGRESS
+    db.add(WorkInterval(user_id=user.id, session_id=session.id, started_at=now))
+    mark_schedule_inputs_changed(db, user.id)
+    db.commit()
+    logger.info("timer_started", extra={"user_id": str(user.id), "session_id": str(session.id)})
+    return _timer_read(db, session, now)
+
+
 def start(db: Session, user: User, session_id: uuid.UUID, now: datetime) -> ActiveTimerRead:
     reconcile_missed_sessions(db, user, now)
     locked = lock_user(db, user)
@@ -96,19 +113,60 @@ def start(db: Session, user: User, session_id: uuid.UUID, now: datetime) -> Acti
     zone = ZoneInfo(locked.timezone)
     if session.start_at.astimezone(zone).date() > now.astimezone(zone).date():
         raise SessionNotStartableError
+    return _begin(db, locked, session, now)
 
-    task = db.get_one(Task, session.task_id)
+
+def quick_start(db: Session, user: User, task_id: uuid.UUID, now: datetime) -> ActiveTimerRead:
+    """Time a task right now, without planning a session first.
+
+    The new session holds the calendar from now for one preferred session length, or until the
+    next planned session, so the scheduler sees the time as taken. Finishing it shrinks the slot
+    to the time actually worked.
+    """
+    reconcile_missed_sessions(db, user, now)
+    locked = lock_user(db, user)
+    if _open_session(db, locked) is not None:
+        raise TimerActiveError
+    task = get_owned(db, Task, task_id, locked.id)
     if task.status == TaskStatus.COMPLETED:
         raise TaskCompletedError
-    if task.status == TaskStatus.TODO:
-        task.status = TaskStatus.IN_PROGRESS
 
-    session.status = SessionStatus.IN_PROGRESS
-    db.add(WorkInterval(user_id=locked.id, session_id=session.id, started_at=now))
-    mark_schedule_inputs_changed(db, locked.id)
-    db.commit()
-    logger.info("timer_started", extra={"user_id": str(locked.id), "session_id": str(session.id)})
-    return _timer_read(db, session, now)
+    planned = db.scalars(
+        select(StudySession)
+        .where(
+            StudySession.user_id == locked.id,
+            StudySession.status == SessionStatus.PLANNED,
+            StudySession.end_at > now,
+        )
+        .order_by(StudySession.start_at)
+    ).first()
+    if planned is not None and planned.start_at <= now:
+        # A session is planned for right now. If it is for this task, that is the one to time.
+        if planned.task_id == task.id:
+            return _begin(db, locked, planned, now)
+        title = db.get_one(Task, planned.task_id).title
+        raise SessionConflictError(
+            f"You have \u201c{title}\u201d planned right now. Start that session, or move it first."
+        )
+
+    preferences = db.get(StudyPreferences, locked.id)
+    length = timedelta(minutes=preferences.preferred_session_minutes if preferences else 50)
+    end = now + length if planned is None else min(now + length, planned.start_at)
+    if end - now < _SHORTEST_SLOT:
+        raise SessionConflictError(
+            "Your next planned session starts in under a minute. Start that one instead."
+        )
+    session = StudySession(
+        user_id=locked.id,
+        task_id=task.id,
+        start_at=now,
+        end_at=end,
+        origin=SessionOrigin.MANUAL,
+        unplanned=True,
+    )
+    db.add(session)
+    db.flush()
+    return _begin(db, locked, session, now)
 
 
 def pause(db: Session, user: User, session_id: uuid.UUID, now: datetime) -> ActiveTimerRead:
@@ -174,6 +232,10 @@ def finish(
         )
 
     session.status = SessionStatus.COMPLETED
+    if session.unplanned:
+        # The slot was a guess made at the start. Now the real end is known.
+        last_end = max((i.ended_at for i in intervals if i.ended_at), default=session.start_at)
+        session.end_at = max(last_end, session.start_at + _SHORTEST_SLOT)
     mark_schedule_inputs_changed(db, locked.id)
     db.commit()
     logger.info(
@@ -184,10 +246,17 @@ def finish(
 
 
 def discard(db: Session, user: User, session_id: uuid.UUID) -> None:
-    """Undo an accidental start. The session goes back to planned and no time is recorded."""
+    """Undo an accidental start. No time is recorded.
+
+    A planned session goes back to planned. One started on the spot never existed before, so it
+    is removed rather than left behind as a planned session.
+    """
     locked = lock_user(db, user)
     session = _in_status(db, locked, session_id, *_OPEN)
     db.execute(delete(WorkInterval).where(WorkInterval.session_id == session.id))
-    session.status = SessionStatus.PLANNED
+    if session.unplanned:
+        db.delete(session)
+    else:
+        session.status = SessionStatus.PLANNED
     mark_schedule_inputs_changed(db, locked.id)
     db.commit()

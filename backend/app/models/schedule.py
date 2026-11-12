@@ -64,6 +64,8 @@ class StudySession(UUIDPrimaryKey, Timestamps, Base):
     is_locked: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     user_modified_at: Mapped[datetime | None]
     explanation: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Started on the spot with "Start timer" rather than planned ahead.
+    unplanned: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
 
 
 class WorkInterval(UUIDPrimaryKey, Base):

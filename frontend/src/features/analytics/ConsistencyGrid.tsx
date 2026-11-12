@@ -5,7 +5,7 @@ import { formatDuration } from "../../lib/datetime";
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 // One hue, more study is stronger. Fixed steps mean a cell means the same thing every month.
-const LEVELS = [
+export const LEVELS = [
   { below: 1, fill: "var(--color-raised)", label: "None" },
   { below: 30, fill: "color-mix(in srgb, var(--color-brand) 30%, var(--color-raised))", label: "Under 30m" },
   { below: 60, fill: "color-mix(in srgb, var(--color-brand) 55%, var(--color-raised))", label: "Under 1h" },
@@ -13,7 +13,7 @@ const LEVELS = [
   { below: Infinity, fill: "var(--color-brand)", label: "2h or more" },
 ];
 
-function fillFor(minutes: number): string {
+export function fillFor(minutes: number): string {
   return LEVELS.find((level) => minutes < level.below)!.fill;
 }
 

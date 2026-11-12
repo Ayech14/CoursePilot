@@ -321,3 +321,125 @@ def test_listing_shows_actual_minutes_for_finished_sessions(client: TestClient) 
     act(client, headers, session, "finish")
     listed = client.get(SESSIONS, params={"start": NOW.isoformat()}, headers=headers).json()
     assert listed[0]["actual_minutes"] == 40
+
+
+# --- Starting a timer on any task, without a planned session ---
+
+QUICK = f"{SESSIONS}/quick-start"
+
+
+def quick(client: TestClient, headers: Headers, task: str) -> Any:
+    return client.post(QUICK, json={"task_id": task}, headers=headers)
+
+
+def fresh(client: TestClient) -> tuple[Headers, str]:
+    headers = new_user(client, "UTC")
+    return headers, new_task(client, headers, deadline_at=DUE, estimated_minutes=300)["id"]
+
+
+def test_quick_start_times_a_task_right_away(client: TestClient) -> None:
+    headers, task = fresh(client)
+    response = quick(client, headers, task)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["running"] is True
+    session = body["session"]
+    assert (session["status"], session["origin"], session["unplanned"]) == (
+        "in_progress",
+        "manual",
+        True,
+    )
+    # The slot is one preferred session long (50 minutes by default).
+    assert session["start_at"] == "2026-02-02T12:00:00Z"
+    assert session["end_at"] == "2026-02-02T12:50:00Z"
+    assert task_of(client, headers, task)["status"] == "in_progress"
+
+
+def test_quick_start_stops_its_slot_before_the_next_planned_session(client: TestClient) -> None:
+    headers, task = fresh(client)
+    other = new_task(client, headers, deadline_at=DUE)["id"]
+    session_at(client, headers, other, NOW + timedelta(minutes=20))
+    body = quick(client, headers, task).json()
+    assert body["session"]["end_at"] == "2026-02-02T12:20:00Z"
+
+
+def test_quick_start_refuses_when_another_task_is_planned_now(client: TestClient) -> None:
+    headers, task = fresh(client)
+    other = new_task(client, headers, title="Lab report", deadline_at=DUE)["id"]
+    session_at(client, headers, other, NOW + timedelta(minutes=10))
+    set_time(client, NOW + timedelta(minutes=20))  # Sessions can only be planned ahead.
+    response = quick(client, headers, task)
+    assert code(response) == "session_conflict"
+    assert "Lab report" in response.json()["error"]["message"]
+
+
+def test_quick_start_uses_the_planned_session_for_the_same_task(client: TestClient) -> None:
+    headers, task = fresh(client)
+    planned = session_at(client, headers, task, NOW + timedelta(minutes=10))
+    set_time(client, NOW + timedelta(minutes=20))
+    body = quick(client, headers, task).json()
+    assert body["session"]["id"] == planned
+    assert len(client.get(SESSIONS, headers=headers).json()) == 1
+
+
+def test_quick_start_refuses_a_slot_under_a_minute(client: TestClient) -> None:
+    headers, task = fresh(client)
+    other = new_task(client, headers, deadline_at=DUE)["id"]
+    session_at(client, headers, other, NOW + timedelta(seconds=30))
+    assert code(quick(client, headers, task)) == "session_conflict"
+
+
+def test_quick_start_needs_no_open_timer_and_an_open_task(client: TestClient) -> None:
+    headers, task = fresh(client)
+    quick(client, headers, task)
+    other = new_task(client, headers, deadline_at=DUE)["id"]
+    assert code(quick(client, headers, other)) == "timer_active"
+
+    done = new_task(client, headers, deadline_at=DUE)["id"]
+    client.post(f"{API}/tasks/{done}/progress", json={"mark_completed": True}, headers=headers)
+    active_id = active(client, headers)["session"]["id"]
+    act(client, headers, active_id, "discard")
+    assert code(quick(client, headers, done)) == "task_completed"
+
+
+def test_quick_start_on_someone_elses_task_is_not_found(client: TestClient) -> None:
+    _, task = fresh(client)
+    stranger = new_user(client, "UTC")
+    assert quick(client, stranger, task).status_code == 404
+
+
+def test_finishing_a_quick_session_shrinks_it_to_the_time_worked(client: TestClient) -> None:
+    headers, task = fresh(client)
+    session = quick(client, headers, task).json()["session"]["id"]
+    set_time(client, NOW + timedelta(minutes=25))
+    finished = act(client, headers, session, "finish")
+    assert finished.status_code == 200, finished.text
+    body = finished.json()
+    assert (body["status"], body["actual_minutes"]) == ("completed", 25)
+    assert body["end_at"] == "2026-02-02T12:25:00Z"
+    assert task_of(client, headers, task)["actual_minutes"] == 25
+
+
+def test_a_quick_session_can_run_past_its_slot(client: TestClient) -> None:
+    headers, task = fresh(client)
+    session = quick(client, headers, task).json()["session"]["id"]
+    set_time(client, NOW + timedelta(minutes=80))
+    body = act(client, headers, session, "finish").json()
+    assert body["actual_minutes"] == 80
+    assert body["end_at"] == "2026-02-02T13:20:00Z"
+
+
+def test_discarding_a_quick_session_removes_it(client: TestClient) -> None:
+    headers, task = fresh(client)
+    session = quick(client, headers, task).json()["session"]["id"]
+    set_time(client, NOW + timedelta(minutes=5))
+    assert act(client, headers, session, "discard").status_code == 204
+    assert client.get(SESSIONS, headers=headers).json() == []
+    assert active(client, headers) is None
+    assert task_of(client, headers, task)["actual_minutes"] == 0
+
+
+def test_quick_start_validates_the_body(client: TestClient) -> None:
+    headers, _ = fresh(client)
+    response = client.post(QUICK, json={"task_id": "nope"}, headers=headers)
+    assert "task_id" in field_errors(response)

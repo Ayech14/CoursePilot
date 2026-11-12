@@ -176,11 +176,11 @@ All routes are under `/api/v1`. Interactive docs are served at `/docs`.
 | Courses | `GET, POST /courses`, `GET, PATCH, DELETE /courses/{id}` (progress is included) | M2 |
 | Tasks | `GET, POST /tasks` (filters and paging), `GET, PATCH, DELETE /tasks/{id}`, `POST /tasks/{id}/progress` | M2 |
 | Availability | `GET, PUT /availability/windows` (replaces the week), CRUD `/availability/recurring-blocks`, `/availability/one-off-blocks` | M2 |
-| Preferences | `GET, PUT /preferences` | M2 |
+| Preferences | `GET, PUT /preferences`, `PUT /preferences/daily-goal` (a personal target; never changes the schedule) | M2, M8 |
 | Schedule | `POST /schedule/preview` (repair or regenerate), `GET /schedule/status`, `GET /schedule/proposals/{current,{id}}`, `POST …/{id}/apply`, `POST …/{id}/reject` | M3–M4 |
 | Sessions | `GET, POST /sessions`, `PATCH, DELETE /sessions/{id}`, `POST …/{id}/{lock,unlock}`, `POST /sessions/check-placement` | M3–M4 |
-| Session timer | `GET /sessions/active`, `POST /sessions/{id}/{start,pause,resume,finish,discard}` | M5 |
-| Dashboard, analytics | `GET /dashboard`, `GET /analytics?weeks=` | M5 |
+| Session timer | `GET /sessions/active`, `POST /sessions/{id}/{start,pause,resume,finish,discard}`, `POST /sessions/quick-start` (time any task now, without a planned session) | M5, M8 |
+| Dashboard, analytics | `GET /dashboard` (with today's progress, streak and recent sessions), `GET /analytics?weeks=`, `GET /month?month=YYYY-MM` | M5, M8 |
 | Busy times | `GET /busy-times?start=&end=` (weekly, one-off and imported, combined) | M6 |
 | Connected calendars | `GET, POST /calendar-feeds`, `PATCH, DELETE /calendar-feeds/{id}`, `POST …/{id}/sync`, `POST /calendar-feeds/sync-stale` | M6 |
 | Deadline suggestions | `GET /deadline-suggestions`, `POST …/{id}/accept`, `POST …/{id}/dismiss` | M6 |

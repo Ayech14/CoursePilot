@@ -1,4 +1,4 @@
-import { Circle, CircleCheck, Clock, Flag, ListChecks, Pencil, Plus, Trash2, type LucideIcon } from "lucide-react";
+import { Circle, CircleCheck, Clock, Flag, ListChecks, Pencil, Play, Plus, Trash2, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -11,6 +11,7 @@ import { EmptyState, PageHeader, QueryState } from "../../components/ui/States";
 import { formatDateTime, formatDuration } from "../../lib/datetime";
 import { useAuth } from "../auth/AuthContext";
 import { DeadlineSuggestions } from "../calendars/DeadlineSuggestions";
+import { QuickStartDialog } from "../timer/QuickStartDialog";
 import { useCourses, type Course } from "../courses/api";
 import {
   labelFor,
@@ -32,7 +33,7 @@ const STATUS_FILTERS = [
   { value: "", label: "All" },
 ];
 
-type Dialog = { kind: "create" } | { kind: "edit" | "progress" | "delete"; task: Task } | null;
+type Dialog = { kind: "create" } | { kind: "edit" | "progress" | "delete" | "timer"; task: Task } | null;
 
 interface RowProps {
   task: Task;
@@ -123,6 +124,9 @@ function TaskRow({ task, course, zone, onDialog }: RowProps) {
       </div>
 
       <div className="flex shrink-0 gap-0.5">
+        {!done && (
+          <RowAction label={`Start timer on ${task.title}`} icon={Play} onClick={() => onDialog({ kind: "timer", task })} />
+        )}
         {!done && (
           <RowAction label={`Log time on ${task.title}`} icon={Clock} onClick={() => onDialog({ kind: "progress", task })} />
         )}
@@ -220,6 +224,7 @@ export function TasksPage() {
 
       {dialog?.kind === "create" && <TaskFormDialog defaultCourseId={courseId} onClose={close} />}
       {dialog?.kind === "edit" && <TaskFormDialog task={dialog.task} onClose={close} />}
+      {dialog?.kind === "timer" && <QuickStartDialog taskId={dialog.task.id} onClose={close} />}
       {dialog?.kind === "progress" && <ProgressDialog task={dialog.task} onClose={close} />}
       {dialog?.kind === "delete" && (
         <ConfirmDialog

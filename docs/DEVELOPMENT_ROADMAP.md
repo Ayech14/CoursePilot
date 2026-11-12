@@ -66,6 +66,11 @@ images, deployment, documentation. A6, I1–I3, K7.
 
 **Part 1, done (2026-11-11):** in-app notifications (I1–I3, A6), sign-in and registration rate
 limits, calendar links encrypted at rest, security headers, and a dependency audit.
+**Part 1b, done (2026-11-11), from reference screenshots the owner shared:** a daily goal with
+today's progress ring, the run of study days, recent sessions, a month overview on the dashboard
+(time studied per day, tasks finished, deadlines; pick a day for details), "Start timer" on any
+task without planning a session first, and Ctrl or ⌘ + K search (G4, H3, N1). Left out on purpose:
+friends and social features, achievement badges and photo backgrounds.
 **Part 2, waiting on the hosting choice:** production images, deployment (K7), a content security
 policy for the web app, Playwright journeys and a performance pass.
 
@@ -197,6 +202,25 @@ notifications were worked out, so a missed session was reported one visit late.
 - No content security policy for the web app yet; it belongs with the production web server in part 2.
 - The theme is saved per device. Untested against a real eClass link from outside the owner's account.
 - No Playwright suite yet (part 2). Touch dragging untested on a real phone.
+
+### M8 part 1b verification record (2026-11-11)
+
+| Check | Result |
+|-------|--------|
+| Backend tests, lint, types | 5,224 passed; ruff and mypy clean; 99% coverage |
+| Frontend tests, lint, production build | 273 passed, clean |
+| Streak | Counted in the student's local days; today never breaks it before it ends; the dashboard and Analytics now give the same number, also past 28 days |
+| Month overview | Every day of the month; time split at local midnight; time on an archived course's task still shown; another student's records never appear |
+| Start timer | Slot runs to the next planned session at most; refused, with the reason, when another task is planned right now; uses the planned session when it is for the same task; finishing shrinks the slot to the time worked; discarding removes it |
+| Daily goal | Saved without marking the schedule as needing an update; saving the other preferences keeps it |
+| Browser | Dashboard, goal chips, day details, search, Start timer and discard checked on a demo account (deleted afterwards), in both themes and at phone width |
+
+Found while checking in the browser and fixed: the timer dialog waited for every page to reload
+before closing, about three seconds; and discarding an on-the-spot session said it would go back
+to planned, when it is removed.
+
+**Known gaps:** the streak looks back at most 366 days. Search covers the first 500 tasks, as the
+task list does.
 
 ### M7 verification record (2026-11-10)
 

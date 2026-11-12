@@ -148,3 +148,11 @@ def update_preferences(db: Session, user: User, data: PreferencesWrite) -> Study
     mark_schedule_inputs_changed(db, user.id)
     db.commit()
     return preferences
+
+
+def set_daily_goal(db: Session, user: User, minutes: int | None) -> StudyPreferences:
+    """A personal target only, so unlike the other preferences it leaves the schedule alone."""
+    preferences = get_preferences(db, user)
+    preferences.daily_goal_minutes = minutes
+    db.commit()
+    return preferences

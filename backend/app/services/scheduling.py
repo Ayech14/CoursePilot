@@ -579,6 +579,7 @@ def session_read(
         ),
         explanation=_explanation_text(session.explanation),
         actual_minutes=actual_minutes,
+        unplanned=session.unplanned,
     )
 
 

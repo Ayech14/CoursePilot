@@ -7,12 +7,15 @@ import { formatDateTime, formatDuration, formatTime, minutesBetween } from "../.
 import { useAuth } from "../auth/AuthContext";
 import type { StudySession } from "../schedule/api";
 import { StartSessionButton } from "../timer/StartSessionButton";
+import { StartTimerButton } from "../timer/StartTimerButton";
 import {
   useDashboard,
   type AttentionItem,
   type Dashboard,
   type DeadlineItem,
 } from "./api";
+import { MonthOverview } from "./MonthOverview";
+import { RecentActivityCard, TodayProgressCard } from "./Progress";
 
 function greetingFor(timezone: string, now: Date): string {
   const hour = Number(
@@ -233,6 +236,16 @@ function Summary({ data, zone }: { data: Dashboard; zone: string }) {
         />
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4">
+          <TodayProgressCard progress={data.progress} />
+          <RecentActivityCard items={data.recent} zone={zone} />
+        </div>
+        <div className="lg:col-span-2">
+          <MonthOverview zone={zone} />
+        </div>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Today">
           {data.today.length === 0 ? (
@@ -334,6 +347,11 @@ export function DashboardPage() {
               {greetingFor(user.timezone, now)}, {user.display_name}
             </h1>
             {line && <p className="mt-2 max-w-xl text-sm text-ink-muted">{line}</p>}
+            {dashboard.data && hasAnything(dashboard.data) && (
+              <div className="mt-4">
+                <StartTimerButton variant="primary" />
+              </div>
+            )}
           </div>
           {dashboard.data && hasAnything(dashboard.data) && (
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">

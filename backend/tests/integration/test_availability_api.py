@@ -201,10 +201,9 @@ def test_new_users_have_default_preferences(client: TestClient) -> None:
 
 def test_preferences_can_be_updated(client: TestClient) -> None:
     headers = new_user(client)
-    assert (
-        client.put(PREFERENCES, json=VALID_PREFERENCES, headers=headers).json() == VALID_PREFERENCES
-    )
-    assert client.get(PREFERENCES, headers=headers).json() == VALID_PREFERENCES
+    expected = {**VALID_PREFERENCES, "daily_goal_minutes": None}
+    assert client.put(PREFERENCES, json=VALID_PREFERENCES, headers=headers).json() == expected
+    assert client.get(PREFERENCES, headers=headers).json() == expected
 
 
 @pytest.mark.parametrize(

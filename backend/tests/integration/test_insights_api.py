@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import StudySession, Task, WorkInterval
-from app.models.enums import SessionOrigin, SessionStatus
+from app.models.enums import SessionOrigin, SessionStatus, TaskStatus
 from app.services.scheduling import utc_now
 from tests.integration.helpers import API, Headers, new_course, new_task, new_user
 
@@ -398,3 +398,191 @@ def test_studying_today_extends_the_streak(client: TestClient, db: Session) -> N
         start = NOW - timedelta(days=days_ago, hours=1)
         worked(db, client, headers, task, start, start + timedelta(minutes=30))
     assert stats(client, headers)["consistency"]["current_streak"] == 2
+
+
+# --- Today's progress, streak, recent sessions and the month overview ---
+
+MONTH = f"{API}/month"
+GOAL = f"{API}/preferences/daily-goal"
+
+
+def month_of(client: TestClient, headers: Headers, **params: Any) -> dict[str, Any]:
+    response = client.get(MONTH, params=params, headers=headers)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_progress_starts_empty_with_no_goal(client: TestClient) -> None:
+    headers = new_user(client, "UTC")
+    assert dash(client, headers)["progress"] == {
+        "studied_minutes": 0,
+        "goal_minutes": None,
+        "streak_days": 0,
+        "studied_today": False,
+    }
+    assert dash(client, headers)["recent"] == []
+
+
+def test_daily_goal_is_saved_without_touching_the_schedule(client: TestClient) -> None:
+    headers = new_user(client, "UTC")
+    version = client.get(f"{API}/schedule/status", headers=headers).json()
+    response = client.put(GOAL, json={"minutes": 120}, headers=headers)
+    assert response.status_code == 200, response.text
+    assert response.json()["daily_goal_minutes"] == 120
+    assert dash(client, headers)["progress"]["goal_minutes"] == 120
+    assert client.get(f"{API}/schedule/status", headers=headers).json() == version
+
+    assert client.put(GOAL, json={"minutes": None}, headers=headers).status_code == 200
+    assert dash(client, headers)["progress"]["goal_minutes"] is None
+
+
+@pytest.mark.parametrize("minutes", [0, 14, 721, "lots"])
+def test_daily_goal_is_validated(client: TestClient, minutes: Any) -> None:
+    headers = new_user(client, "UTC")
+    assert client.put(GOAL, json={"minutes": minutes}, headers=headers).status_code == 422
+
+
+def test_updating_preferences_keeps_the_goal(client: TestClient) -> None:
+    headers = new_user(client, "UTC")
+    client.put(GOAL, json={"minutes": 90}, headers=headers)
+    prefs = client.get(f"{API}/preferences", headers=headers).json()
+    prefs.pop("daily_goal_minutes")
+    prefs["break_minutes"] = 15
+    assert client.put(f"{API}/preferences", json=prefs, headers=headers).status_code == 200
+    assert client.get(f"{API}/preferences", headers=headers).json()["daily_goal_minutes"] == 90
+
+
+def test_progress_counts_today_and_the_streak(client: TestClient, db: Session) -> None:
+    headers = new_user(client, "UTC")
+    task = new_task(client, headers, deadline_at=due(10))
+    for days_ago in (3, 2, 1):  # A gap on day 4 ends the streak there.
+        start = NOW - timedelta(days=days_ago)
+        worked(db, client, headers, task, start, start + timedelta(minutes=30))
+    worked(db, client, headers, task, NOW - timedelta(days=5), NOW - timedelta(days=5, minutes=-20))
+
+    progress = dash(client, headers)["progress"]
+    assert progress["streak_days"] == 3
+    assert progress["studied_today"] is False
+    assert progress["studied_minutes"] == 0
+
+    worked(
+        db, client, headers, task, NOW - timedelta(hours=2), NOW - timedelta(hours=1, minutes=15)
+    )
+    progress = dash(client, headers)["progress"]
+    assert progress == {**progress, "streak_days": 4, "studied_today": True, "studied_minutes": 45}
+    assert stats(client, headers)["consistency"]["current_streak"] == 4
+
+
+def test_streak_longer_than_the_analytics_window(client: TestClient, db: Session) -> None:
+    headers = new_user(client, "UTC")
+    task = new_task(client, headers, deadline_at=due(10))
+    for days_ago in range(1, 41):
+        start = NOW - timedelta(days=days_ago)
+        worked(db, client, headers, task, start, start + timedelta(minutes=10))
+    assert dash(client, headers)["progress"]["streak_days"] == 40
+    assert stats(client, headers)["consistency"]["current_streak"] == 40
+
+
+def test_streak_uses_the_students_local_days(client: TestClient, db: Session) -> None:
+    # 03:00 UTC on Wednesday is still Tuesday evening in Toronto.
+    headers = new_user(client, "America/Toronto")
+    task = new_task(client, headers, deadline_at=due(10))
+    tuesday_night = datetime(2026, 2, 4, 3, 0, tzinfo=UTC)
+    worked(db, client, headers, task, tuesday_night, tuesday_night + timedelta(minutes=30))
+    progress = dash(client, headers)["progress"]
+    assert progress["studied_today"] is False
+    assert progress["streak_days"] == 1
+
+
+def test_recent_lists_finished_sessions_newest_first(client: TestClient, db: Session) -> None:
+    headers = new_user(client, "UTC")
+    course = new_course(client, headers, name="Biology", color="#22aa55")
+    bio = new_task(client, headers, title="Cells", course_id=course["id"], deadline_at=due(10))
+    other = new_task(client, headers, title="Essay", deadline_at=due(10))
+    worked(db, client, headers, bio, NOW - timedelta(days=2), NOW - timedelta(days=2, minutes=-58))
+    worked(db, client, headers, other, NOW - timedelta(hours=5), NOW - timedelta(hours=4))
+    worked(db, client, headers, other, NOW - timedelta(hours=1), NOW, status=SessionStatus.MISSED)
+
+    recent = dash(client, headers)["recent"]
+    assert [(r["task_title"], r["minutes"]) for r in recent] == [("Essay", 60), ("Cells", 58)]
+    assert recent[1]["course_name"] == "Biology"
+    assert recent[1]["course_color"] == "#22aa55"
+
+
+def test_month_lists_every_day_with_study_completions_and_deadlines(
+    client: TestClient, db: Session
+) -> None:
+    headers = new_user(client, "UTC")
+    course = new_course(client, headers, color="#3366ff")
+    essay = new_task(client, headers, title="Essay", course_id=course["id"], deadline_at=due(2))
+    exam = new_task(client, headers, title="Midterm", task_type="midterm", deadline_at=due(3))
+    worked(db, client, headers, essay, NOW - timedelta(hours=3), NOW - timedelta(hours=2))
+    worked(
+        db, client, headers, exam, NOW - timedelta(hours=2), NOW - timedelta(hours=1, minutes=30)
+    )
+    finished = db.get_one(Task, essay["id"])
+    finished.status, finished.remaining_minutes = TaskStatus.COMPLETED, 0
+    finished.completed_at = NOW - timedelta(minutes=30)
+    db.flush()
+
+    body = month_of(client, headers)
+    assert body["month"] == "2026-02-01"
+    assert len(body["days"]) == 28
+    today = next(d for d in body["days"] if d["date"] == "2026-02-04")
+    assert today["studied_minutes"] == 90
+    assert [(t["title"], t["minutes"]) for t in today["studied"]] == [
+        ("Essay", 60),
+        ("Midterm", 30),
+    ]
+    assert today["studied"][0]["course_color"] == "#3366ff"
+    assert [c["title"] for c in today["completed"]] == ["Essay"]
+    friday = next(d for d in body["days"] if d["date"] == "2026-02-06")
+    assert friday["deadlines"][0]["title"] == "Essay"
+    assert friday["deadlines"][0]["completed"] is True
+    saturday = next(d for d in body["days"] if d["date"] == "2026-02-07")
+    assert saturday["deadlines"][0]["task_type"] == "midterm"
+
+
+def test_month_can_be_chosen_and_splits_work_at_local_midnight(
+    client: TestClient, db: Session
+) -> None:
+    headers = new_user(client, "America/Toronto")
+    task = new_task(client, headers, deadline_at=due(10))
+    # 23:30 to 00:30 Toronto time across January 31 and February 1.
+    start = datetime(2026, 2, 1, 4, 30, tzinfo=UTC)
+    worked(db, client, headers, task, start, start + timedelta(hours=1))
+    january = month_of(client, headers, month="2026-01")
+    february = month_of(client, headers, month="2026-02")
+    assert len(january["days"]) == 31
+    assert january["days"][-1]["studied_minutes"] == 30
+    assert february["days"][0]["studied_minutes"] == 30
+
+
+@pytest.mark.parametrize("value", ["2026-13", "2026-1", "0000-01", "feb", "2026-02-01"])
+def test_month_is_validated(client: TestClient, value: str) -> None:
+    headers = new_user(client, "UTC")
+    assert client.get(MONTH, params={"month": value}, headers=headers).status_code == 422
+
+
+def test_month_only_shows_the_students_own_records(client: TestClient, db: Session) -> None:
+    owner = new_user(client, "UTC")
+    task = new_task(client, owner, deadline_at=due(1))
+    worked(db, client, owner, task, NOW - timedelta(hours=2), NOW - timedelta(hours=1))
+    stranger = new_user(client, "UTC")
+    days = month_of(client, stranger)["days"]
+    assert all(not d["studied"] and not d["deadlines"] and not d["completed"] for d in days)
+
+
+def test_month_still_shows_time_on_an_archived_course(client: TestClient, db: Session) -> None:
+    headers = new_user(client, "UTC")
+    course = new_course(client, headers, color="#aa3355")
+    task = new_task(client, headers, title="Old lab", course_id=course["id"], deadline_at=due(1))
+    worked(db, client, headers, task, NOW - timedelta(hours=2), NOW - timedelta(hours=1))
+    archived = client.patch(
+        f"{API}/courses/{course['id']}", json={"archived": True}, headers=headers
+    )
+    assert archived.status_code == 200, archived.text
+    today = next(d for d in month_of(client, headers)["days"] if d["date"] == "2026-02-04")
+    assert today["studied"] == [
+        {"task_id": task["id"], "title": "Old lab", "course_color": "#aa3355", "minutes": 60}
+    ]
