@@ -3,12 +3,15 @@
 An academic planning platform that turns courses, deadlines and weekly availability into a realistic
 study schedule, and adapts that schedule when plans change.
 
-> **Status: Milestone 8 in progress.** Students can enter their semester, generate an explained
+> **Live:** https://coursepilot-ko1s.onrender.com (free hosting: the first visit after a quiet spell
+> can take up to a minute while the server wakes).
+>
+> **Status: Milestone 8 done.** Students can enter their semester, generate an explained
 > study schedule, adapt it with minimal changes, drag and resize sessions on a calendar, time their
 > study, see analytics built from their own records, add shifts and plans as busy time, connect
 > a school calendar link, switch between dark and light themes, and get in-app notifications.
-> Sign-in is rate limited and calendar links are encrypted at rest. The production image, its
-> browser journeys and a CI-gated deployment to Render are ready; the live URL is not up yet. See [the roadmap](docs/DEVELOPMENT_ROADMAP.md) for exactly what is
+> Sign-in is rate limited and calendar links are encrypted at rest. It is deployed from CI to
+> Render, with browser journeys run against the production image on every push. See [the roadmap](docs/DEVELOPMENT_ROADMAP.md) for exactly what is
 > done and verified.
 
 **Stack:** React, TypeScript, Vite, Tailwind CSS · FastAPI, Pydantic, SQLAlchemy · PostgreSQL, Alembic ·

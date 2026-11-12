@@ -59,7 +59,7 @@ calendar days in the profile's zone. The dashboard header shows a ring for how m
 week's study is done and the next deadline. Task rows show progress against the estimate, with icon
 actions. "Your week" opens with a week-at-a-glance picture and the free study hours per day.
 
-### M8: Production Readiness — In progress
+### M8: Production Readiness — Done
 Notifications, rate limiting, security review, Playwright journeys, performance pass, production
 images, deployment, documentation. A6, I1–I3, K7.
 **Done when:** the application runs at a public URL through a CI-driven deployment.
@@ -82,9 +82,8 @@ friends and social features, achievement badges and photo backgrounds.
 - **Tests.** Playwright journeys run in that job, on desktop and phone.
 - **Performance.** Assets are gzip-compressed and cached for a year.
 
-**Left for the owner:** create the Neon and Render accounts and apply the Blueprint
-(`docs/DEPLOYMENT.md`). Accounts and secrets are theirs to create. Once the URL is live, the
-visitor-address check in that guide confirms the rate-limit header.
+**Live (2026-11-12):** https://coursepilot-ko1s.onrender.com. The owner created the Neon and Render
+accounts and applied the Blueprint; the deployed commit passed every CI job first.
 
 ### M9: Optional Extensions — Not started
 CP-SAT comparison against the baseline. Optional AI helper that is off by default and never required.
@@ -233,10 +232,23 @@ notifications were worked out, so a missed session was reported one visit late.
 - **Registration limit.** It stopped the fourth back-to-back local run, which confirms it works.
   One CI run registers 6 students, inside the limit.
 
+**Checked on the live site (2026-11-12):**
+- **Health and database:** `/health/ready` answered "ready", so the site reaches Neon.
+- **Headers:** pages carry the page policy and HSTS. Responses come through Cloudflare (`server: cloudflare`).
+- **Assets:** served gzip-compressed (about 150 KB for the main script) and cached for a year.
+- **Visitor-address header:** six failed sign-ins, each claiming a different made-up
+  `True-Client-IP`, gave `401 ×5` then `429`. The edge replaces a visitor's own value, so the
+  limits cannot be dodged that way.
+- **CI:** the deployed commit, `d27dd59`, passed backend, frontend and image jobs on GitHub,
+  including the Playwright journeys. The commit before it failed two frontend tests that depended
+  on the time of day: "2h ago" becomes "Yesterday" just after midnight. Those tests now use a
+  fixed clock.
+
 **Not verified:**
-- Nothing is deployed yet.
-- Render's `True-Client-IP` behaviour is undocumented. `DEPLOYMENT.md` §5 has the check to run on
-  the live URL.
+- From outside, a forged header being ignored looks the same as the header being absent, in which
+  case the limits would count Render's proxy address. Either way they cannot be dodged. Cloudflare
+  is confirmed in front; that it fills `True-Client-IP` with the real address is the expected
+  behaviour but cannot be seen from outside.
 - The main script is about 150 KB compressed, and splitting it further was not attempted.
 - A cold start on the free plan takes about a minute, and nothing in the app can show a message
   while the server wakes.
