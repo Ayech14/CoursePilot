@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { formatAgo } from "../../lib/datetime";
 import { jsonResponse, stubApi } from "../../test/fakeServer";
@@ -8,7 +8,14 @@ import { renderApp } from "../../test/renderApp";
 import type { AppNotification } from "./api";
 import { destinationFor } from "./NotificationBell";
 
-const now = new Date();
+// Midday in Toronto, so "1h ago" never crosses midnight into "Yesterday" whenever the tests run.
+const now = new Date("2026-11-11T17:00:00Z");
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now });
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 const minutesAgo = (m: number) => new Date(now.getTime() - m * 60_000).toISOString();
 
 const OVERDUE: AppNotification = {

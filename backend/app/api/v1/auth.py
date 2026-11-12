@@ -44,9 +44,16 @@ def _limits(request: Request) -> AuthLimits:
     return limits
 
 
-def _address(request: Request) -> str:
-    # Behind a reverse proxy this is the proxy's address unless Uvicorn runs with --proxy-headers
-    # and trusts that proxy (--forwarded-allow-ips). The production setup does both.
+def _address(request: Request, settings: Settings) -> str:
+    """The visitor's address, for rate limits only.
+
+    Behind a hosting platform's proxy the peer is the proxy, so production names the header its
+    edge sets (see ``client_ip_header``). That header is set by the edge, not the visitor.
+    """
+    if settings.client_ip_header:
+        supplied = request.headers.get(settings.client_ip_header, "").strip()
+        if supplied:
+            return supplied[:64]
     return request.client.host if request.client else "unknown"
 
 
@@ -58,7 +65,7 @@ def register(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthResponse:
-    limit, address = _limits(request).register_per_address, _address(request)
+    limit, address = _limits(request).register_per_address, _address(request, settings)
     limit.check(address)
     tokens = auth_service.register(db, data, settings)
     limit.record(address)
@@ -73,7 +80,7 @@ def login(
     db: DbSession,
     settings: AppSettings,
 ) -> AuthResponse:
-    limits, address = _limits(request), _address(request)
+    limits, address = _limits(request), _address(request, settings)
     account = f"{address}|{data.email.strip().lower()}"
     limits.login_per_account.check(account)
     limits.login_per_address.check(address)

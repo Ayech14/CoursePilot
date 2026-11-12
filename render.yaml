@@ -1,0 +1,24 @@
+# Render Blueprint: one free web service running the production Dockerfile.
+# The database is a free Neon PostgreSQL project; paste its connection string as DATABASE_URL
+# when Render asks. Step-by-step instructions: docs/DEPLOYMENT.md.
+services:
+  - type: web
+    name: coursepilot
+    runtime: docker
+    plan: free
+    region: ohio # Close to Toronto, and to Neon's AWS us-east-2 (Ohio) region.
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    # Deploy a commit only after GitHub Actions (tests, lint, image check) pass on it.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Asked for once, in the Render dashboard. Never committed.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CALENDAR_LINK_KEY
+        generateValue: true # Generated separately, so it always differs from JWT_SECRET.
+      - key: CLIENT_IP_HEADER
+        value: true-client-ip # Set by the edge in front of Render; see docs/DEPLOYMENT.md.

@@ -7,7 +7,7 @@ startup makes a misconfigured deployment fail immediately instead of on the firs
 from functools import lru_cache
 from typing import Literal, Self
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEV_SECRET_MARKER = "dev-only"  # noqa: S105  # A marker to detect, not a credential.
@@ -32,6 +32,24 @@ class Settings(BaseSettings):
 
     # Empty by default: the frontend reaches the API on the same origin through a proxy.
     cors_origins: list[str] = []
+
+    # The built web app. When the folder exists, the API serves it too, so the whole product is
+    # one service on one origin and the strict same-site sign-in cookie keeps working.
+    static_dir: str | None = None
+
+    # A header the hosting platform's edge sets to the visitor's real address, such as
+    # "true-client-ip". Unset, the direct peer address is used. X-Forwarded-For is never trusted
+    # for this, because a visitor can write their own and dodge the sign-in limits.
+    client_ip_header: str | None = None
+
+    @field_validator("database_url")
+    @classmethod
+    def use_the_psycopg_driver(cls, value: str) -> str:
+        """Hosted databases hand out plain postgres:// URLs; SQLAlchemy needs the driver named."""
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value.removeprefix(prefix)
+        return value
 
     @model_validator(mode="after")
     def reject_unsafe_production_settings(self) -> Self:

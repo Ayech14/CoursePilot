@@ -73,3 +73,15 @@ def test_valid_time_zones_accepted(zone: str) -> None:
 def test_invalid_time_zones_rejected(zone: str) -> None:
     with pytest.raises(ValidationError):
         UserUpdate(timezone=zone)
+
+
+@pytest.mark.parametrize(
+    ("given", "used"),
+    [
+        ("postgres://u:p@h/d?sslmode=require", "postgresql+psycopg://u:p@h/d?sslmode=require"),
+        ("postgresql://u:p@h/d", "postgresql+psycopg://u:p@h/d"),
+        ("postgresql+psycopg://u:p@h/d", "postgresql+psycopg://u:p@h/d"),
+    ],
+)
+def test_hosted_database_urls_get_the_driver_named(given: str, used: str) -> None:
+    assert make_settings(database_url=given).database_url == used

@@ -100,6 +100,15 @@ In memory is right for one process and needs no Redis. Calendar links carry a pr
 are stored encrypted with Fernet under `CALENDAR_LINK_KEY` (required in production, different from
 the JWT secret), with an HMAC digest to detect duplicates (`app/core/link_cipher.py`).
 
+### 3.5b One production container
+In production the API also serves the built web app (`app/core/web.py`): one Docker image, one
+service, one origin. The alternative was a static host for the pages with the API elsewhere. That
+would make the `SameSite=Strict` refresh cookie a cross-site cookie, which needs looser cookie
+settings and still breaks under third-party cookie blocking. Pages get their own
+Content-Security-Policy, which allows the one inline theme script by its hash. API answers keep the
+deny-all policy. Assets are content-hashed, so they are cached for a year and gzip-compressed.
+Every other page route returns `index.html` uncached. Hosting is described in `DEPLOYMENT.md`.
+
 ### 3.6 Strings with CHECK constraints over native PostgreSQL enums
 Adding a value to a native enum has awkward migration rules and removing one is very hard. A
 `VARCHAR` with a `CHECK` is changed by an ordinary migration and gives the same integrity.
@@ -159,8 +168,11 @@ CoursePilot/
 │   ├── features/<domain>/       # Pages, hooks and API calls per domain
 │   ├── lib/                     # API client, utilities
 │   └── test/
+├── e2e/                         # Playwright journeys against the production image
 ├── docs/
-├── docker-compose.yml
+├── Dockerfile                   # Production image: API plus built web app
+├── render.yaml                  # Render Blueprint
+├── docker-compose.yml           # Local development
 └── .github/workflows/ci.yml
 ```
 
@@ -231,7 +243,7 @@ Requests for another user's resource return `404`, not `403`, so that existence 
 | API integration | Pytest, `TestClient`, **real PostgreSQL** | Endpoints, constraints, tenant isolation, error shape |
 | Migration | Pytest, `alembic check` | Migrations build the schema; models and migrations agree |
 | Frontend | Vitest, Testing Library | Components, routing, API client |
-| End to end | Playwright (M8) | Core journeys in a real browser |
+| End to end | Playwright, against the production image | Plan a week, time a session, search, sign in and out, page policy; desktop and phone |
 
 The integration tests use real PostgreSQL because exclusion constraints, partial indexes and
 `timestamptz` behavior do not exist in SQLite. Each test runs in a rolled-back transaction.

@@ -1,5 +1,5 @@
 # Local development stack: `docker compose up --build`
-# Default credentials here are for local use only. Production settings arrive in Milestone 6.
+# Default credentials here are for local use only. Production: Dockerfile, render.yaml, docs/DEPLOYMENT.md.
 
 x-backend-env: &backend-env
   ENVIRONMENT: local

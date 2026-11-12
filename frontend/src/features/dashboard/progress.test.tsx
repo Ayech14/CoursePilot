@@ -1,12 +1,20 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DateTime } from "luxon";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { bodiesSent, jsonResponse, stubApi } from "../../test/fakeServer";
 import { renderApp } from "../../test/renderApp";
 
 const ZONE = "America/Toronto";
+
+// Midday in Toronto on a fixed date, so "2h ago" stays today and the month is always the same.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-11T17:00:00Z") });
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 const today = () => DateTime.now().setZone(ZONE);
 
 const WORKLOAD = {

@@ -7,12 +7,12 @@ study schedule, and adapts that schedule when plans change.
 > study schedule, adapt it with minimal changes, drag and resize sessions on a calendar, time their
 > study, see analytics built from their own records, add shifts and plans as busy time, connect
 > a school calendar link, switch between dark and light themes, and get in-app notifications.
-> Sign-in is rate limited and calendar links are encrypted at rest. Production deployment is not
-> built yet. See [the roadmap](docs/DEVELOPMENT_ROADMAP.md) for exactly what is
+> Sign-in is rate limited and calendar links are encrypted at rest. The production image, its
+> browser journeys and a CI-gated deployment to Render are ready; the live URL is not up yet. See [the roadmap](docs/DEVELOPMENT_ROADMAP.md) for exactly what is
 > done and verified.
 
 **Stack:** React, TypeScript, Vite, Tailwind CSS · FastAPI, Pydantic, SQLAlchemy · PostgreSQL, Alembic ·
-Docker Compose, GitHub Actions
+Docker Compose, GitHub Actions, Playwright · Render and Neon in production
 
 ## Run it
 
@@ -52,6 +52,22 @@ npm run lint
 npm run build
 ```
 
+Browser journeys (Playwright) run against the production image, the same one that is deployed:
+
+```bash
+docker build -t coursepilot .
+# Start it with a database, then:
+cd e2e && npm ci && npx playwright install chromium && E2E_BASE_URL=http://localhost:8000 npx playwright test
+```
+
+CI does all of this on every push. See the `image` job in `.github/workflows/ci.yml`.
+
+## Deploy it
+
+One Docker image runs on Render's free plan and serves both the API and the web app, with
+PostgreSQL on Neon's free plan. Pushes to `main` deploy themselves once CI passes.
+Setup takes about ten minutes: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## Documentation
 
 | Document | Contents |
@@ -61,3 +77,4 @@ npm run build
 | [Database design](docs/DATABASE_DESIGN.md) | Schema, constraints, indexes |
 | [Scheduling engine](docs/SCHEDULING_ENGINE.md) | Algorithm, guarantees, rescheduling, manual control |
 | [Roadmap](docs/DEVELOPMENT_ROADMAP.md) | Milestones, status, verification record |
+| [Deployment](docs/DEPLOYMENT.md) | Hosting choice, one-time setup, everyday use |

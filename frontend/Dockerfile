@@ -1,4 +1,4 @@
-# Development image. A production build served by a web server arrives in Milestone 6.
+# Development image. Production uses ../Dockerfile, where the API serves the built app.
 FROM node:26-alpine
 
 WORKDIR /app

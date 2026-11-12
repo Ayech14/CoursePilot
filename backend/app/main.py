@@ -20,6 +20,7 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.core.rate_limit import AuthLimits
+from app.core.web import mount_web_app
 
 
 def create_app() -> FastAPI:
@@ -38,10 +39,6 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-    # Added last so it is outermost and sees every request and every failure.
-    # HSTS only where the site is served over HTTPS, which production always is.
-    app.add_middleware(RequestContextMiddleware, hsts=settings.environment == "production")
-
     api_v1 = APIRouter(prefix="/api/v1")
     api_v1.include_router(auth.router)
     api_v1.include_router(users.router)
@@ -58,6 +55,17 @@ def create_app() -> FastAPI:
     api_v1.include_router(notifications.router)
     app.include_router(api_v1)
     app.include_router(health.router)
+
+    # Last, so that its catch-all page route never shadows an API route.
+    page_policy = mount_web_app(app, settings.static_dir) if settings.static_dir else None
+
+    # Added last so it is outermost and sees every request and every failure.
+    # HSTS only where the site is served over HTTPS, which production always is.
+    app.add_middleware(
+        RequestContextMiddleware,
+        hsts=settings.environment == "production",
+        page_policy=page_policy,
+    )
     return app
 
 

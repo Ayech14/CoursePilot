@@ -71,8 +71,20 @@ today's progress ring, the run of study days, recent sessions, a month overview 
 (time studied per day, tasks finished, deadlines; pick a day for details), "Start timer" on any
 task without planning a session first, and Ctrl or ⌘ + K search (G4, H3, N1). Left out on purpose:
 friends and social features, achievement badges and photo backgrounds.
-**Part 2, waiting on the hosting choice:** production images, deployment (K7), a content security
-policy for the web app, Playwright journeys and a performance pass.
+**Part 2, built (2026-11-12), going live waits on the owner:**
+- **Hosting.** Render's free plan for one container, with Neon's free PostgreSQL. Chosen for no
+  servers to run, HTTPS included, and deploys that work for a first-time deployer.
+- **The image.** One production image serves the API and the built web app on one origin.
+- **Policies.** A content security policy for the pages, and rate limits keyed on the edge's
+  visitor-address header.
+- **Deploys.** A Render Blueprint that deploys only after CI passes (K7).
+- **CI.** A job that builds the image, migrates a fresh database and smoke-tests it.
+- **Tests.** Playwright journeys run in that job, on desktop and phone.
+- **Performance.** Assets are gzip-compressed and cached for a year.
+
+**Left for the owner:** create the Neon and Render accounts and apply the Blueprint
+(`docs/DEPLOYMENT.md`). Accounts and secrets are theirs to create. Once the URL is live, the
+visitor-address check in that guide confirms the rate-limit header.
 
 ### M9: Optional Extensions — Not started
 CP-SAT comparison against the baseline. Optional AI helper that is off by default and never required.
@@ -202,6 +214,32 @@ notifications were worked out, so a missed session was reported one visit late.
 - No content security policy for the web app yet; it belongs with the production web server in part 2.
 - The theme is saved per device. Untested against a real eClass link from outside the owner's account.
 - No Playwright suite yet (part 2). Touch dragging untested on a real phone.
+
+### M8 part 2 verification record (2026-11-12)
+
+| Check | Result |
+|-------|--------|
+| Backend tests, lint, types | All pass, including web serving, page policy, HEAD requests, compression, the visitor-address header and database URL forms |
+| Production image | Built locally. It migrated an empty database on start, served pages, assets and the API, and kept a session through a page reload and a restart |
+| CI smoke commands | Run locally against the image, all pass |
+| Playwright | 3 journeys on desktop and phone, 6 tests. Three clean runs in a row against the production image |
+| Page policy | No violations on any page. The check caught the calendar's embedded icon font, which `font-src` now allows as `data:` |
+
+**Found and fixed:**
+- **Unknown request methods.** HEAD requests to pages answered 405; uptime checkers use HEAD.
+- **Blocked icons.** The calendar's arrow icons were blocked by the page policy.
+- **A racy test.** The search journey raced the task list loading; the test now waits for the
+  result, as a person would.
+- **Registration limit.** It stopped the fourth back-to-back local run, which confirms it works.
+  One CI run registers 6 students, inside the limit.
+
+**Not verified:**
+- Nothing is deployed yet.
+- Render's `True-Client-IP` behaviour is undocumented. `DEPLOYMENT.md` §5 has the check to run on
+  the live URL.
+- The main script is about 150 KB compressed, and splitting it further was not attempted.
+- A cold start on the free plan takes about a minute, and nothing in the app can show a message
+  while the server wakes.
 
 ### M8 part 1b verification record (2026-11-11)
 
